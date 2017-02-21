@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <memory>
+#include <cstring>
 
 #include <zstd.h>
 
@@ -79,8 +80,14 @@ class Reader{
 
 class Writer{
 	public:
-		virtual bool write( void* buffer, uint64_t amount ) = 0;
+		virtual bool write( const void* buffer, uint64_t amount ) = 0;
 		virtual bool seek( uint64_t position ) = 0;
+};
+
+struct HeaderHeader{
+	char magic[4];
+	char magic_custom[4];
+	uint32_t header_size;
 };
 
 class ArchiveConstructor;
@@ -110,7 +117,49 @@ class Archive{
 	//	Archive( Reader& reader );
 		
 		auto fileCount() const{ return files.size(); }
+		
+		void write( Writer& writer );
 };
+
+void Archive::write( Writer& writer ){
+	//Construct headerheader
+	HeaderHeader headerheader;
+	headerheader.magic[0] = 'F';
+	headerheader.magic[1] = 'x';
+	headerheader.magic[2] = 'S';
+	headerheader.magic[3] = 'F';
+	headerheader.magic_custom[0] = 0;
+	headerheader.magic_custom[1] = 0;
+	headerheader.magic_custom[2] = 0;
+	headerheader.magic_custom[3] = 0;
+	
+	//Construct header
+	auto size = 8 + files.size() * sizeof(File);
+	auto buf = std::make_unique<char[]>( size );
+	struct HeaderStart{
+		uint32_t file_count;
+		uint32_t folder_count;
+	} start;
+	start.file_count = files.size();
+	start.folder_count = folders.size();
+	std::memcpy( buf.get(), &start, sizeof(HeaderStart) );
+	
+	for( unsigned i=files.size()-1; i>0; i-- ){
+		std::cout << "normal : " << files[i].file_start() << " " << files[i].filesize << " " << files[i].compressed_size << std::endl;
+		files[i].compress( files[i-1] );
+		std::cout << "changed: " << files[i].file_start() << " " << files[i].filesize << " " << files[i].compressed_size << std::endl;
+	}
+	std::memcpy( buf.get() + sizeof(HeaderStart), files.data(), sizeof(File)*files.size() );
+	
+	//Compress header
+	auto compressed = zstd::compress( buf.get(), size );
+	headerheader.header_size = compressed.second;
+	
+	//Write result
+	writer.write( &headerheader, sizeof(headerheader) );
+	writer.write( compressed.first.get(), compressed.second );
+//	writer.write( buf.get(), size );
+}
 
 
 class ArchiveConstructor{
@@ -229,6 +278,19 @@ struct CounterIterator{
 template<typename T>
 CounterIterator<T> upTo(T last){ return {last}; }
 
+class QtWriter : public Writer{
+	private:
+		QFile file;
+	public:
+		QtWriter( QString path ) : file(path) { file.open(QIODevice::WriteOnly); }
+		
+		bool write( const void* buffer, uint64_t amount ) override{
+			//TODO: fail if amount larger than int64_t MAX
+			return file.write( static_cast<const char*>(buffer), amount ) == int64_t(amount);
+		}
+		bool seek( uint64_t position ) override
+			{ return file.seek( position ); }
+};
 
 int main(int argc, char* argv[]){
 	QCoreApplication app(argc, argv);
@@ -247,6 +309,8 @@ int main(int argc, char* argv[]){
 		
 	//	std::cout << files[i].second.absoluteFilePath().toLocal8Bit().constData() << std::endl;
 		auto compressed = zstd::compress( buf.data(), buf.size() );
+		if( compressed.second > buf.size() )
+			std::cout << files[i].second.fileName().toLocal8Bit().constData() << std::endl;
 	//	std::cout << "\tCompressed: " << compressed.second << std::endl;
 	//	std::cout << "\tNormal    : " << buf.size() << std::endl;
 		
@@ -254,7 +318,8 @@ int main(int argc, char* argv[]){
 	}
 	
 	auto header = arc.createHeader();
-	
+	QtWriter writer( "test.fxsf" );
+	header.write( writer );
 	
 	return 0;
 }

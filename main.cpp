@@ -83,7 +83,9 @@ class Writer{
 		virtual bool seek( uint64_t position ) = 0;
 };
 
+class ArchiveConstructor;
 class Archive{
+	friend class ArchiveConstructor;
 	private:
 		std::vector<File> files;
 		std::vector<uint16_t> folders;
@@ -105,7 +107,7 @@ class Archive{
 		};
 		
 	public:
-		Archive( Reader& reader );
+	//	Archive( Reader& reader );
 		
 		auto fileCount() const{ return files.size(); }
 };
@@ -113,11 +115,66 @@ class Archive{
 
 class ArchiveConstructor{
 	private:
+		struct ArchiveFile{
+			std::string name;
+			unsigned folder_id;
+			uint64_t compressed_size;
+			uint64_t size;
+		};
+		std::vector<ArchiveFile> files;
 		
+		struct ArchiveFolder{
+			std::string folder;
+		};
+		std::vector<ArchiveFolder> folders;
+		
+		unsigned getFolderPos( std::string dir, bool create=true );
 	
 	public:
+		ArchiveConstructor(){
+			folders.push_back( {} );
+		}
+		void addFile( std::string name, std::string dir, unsigned compressed_size, unsigned size );
 		
+		Archive createHeader();
 };
+
+unsigned ArchiveConstructor::getFolderPos( std::string dir, bool create ){
+	return 0; //TODO:
+}
+
+void ArchiveConstructor::addFile( std::string name, std::string dir, unsigned compressed_size, unsigned size ){
+	ArchiveFile f;
+	f.name = name;
+	f.folder_id = getFolderPos( dir );
+	f.size = size;
+	f.compressed_size = compressed_size;
+	files.push_back( f );
+}
+
+Archive ArchiveConstructor::createHeader(){
+	//TODO: create folder map
+	//TODO: sort by how often they are used
+	Archive arc;
+	arc.folders.push_back( 0 );
+	
+	uint64_t current_offset = 0;
+	for( auto& file : files ){
+		File f;
+		f.offset = current_offset;
+		f.filesize = file.size;
+		f.compressed_size = file.compressed_size;
+		f.folder = 0; //TODO:
+		f.format = 1; //TODO:
+		f.flags  = 0; //TODO:
+		f.user   = 0; //TODO:
+		arc.files.push_back( f );
+		
+		current_offset += f.compressed_size;
+	}
+	
+	return arc;
+}
 
 std::vector<std::pair<QDir,QFileInfo>> allFiles( QDir current ){
 	auto files = current.entryList();
@@ -176,7 +233,7 @@ CounterIterator<T> upTo(T last){ return {last}; }
 int main(int argc, char* argv[]){
 	QCoreApplication app(argc, argv);
 	
-//	ArchiveConstructor arc;
+	ArchiveConstructor arc;
 	auto dir = QDir(app.arguments()[1]);
 	
 	auto files = allFiles( dir );
@@ -188,11 +245,16 @@ int main(int argc, char* argv[]){
 		}
 		auto buf = f.readAll();
 		
-		std::cout << files[i].second.absoluteFilePath().toLocal8Bit().constData() << std::endl;
+	//	std::cout << files[i].second.absoluteFilePath().toLocal8Bit().constData() << std::endl;
 		auto compressed = zstd::compress( buf.data(), buf.size() );
-		std::cout << "\tCompressed: " << compressed.second << std::endl;
-		std::cout << "\tNormal    : " << buf.size() << std::endl;
+	//	std::cout << "\tCompressed: " << compressed.second << std::endl;
+	//	std::cout << "\tNormal    : " << buf.size() << std::endl;
+		
+		arc.addFile( files[i].second.fileName().toUtf8().constData(), "", compressed.second, buf.size() );
 	}
+	
+	auto header = arc.createHeader();
+	
 	
 	return 0;
 }

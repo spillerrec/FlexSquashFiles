@@ -1,8 +1,37 @@
 #include <QCoreApplication>
 #include <QDir>
+#include <QFile>
 
 #include <iostream>
 #include <memory>
+
+#include <zstd.h>
+
+namespace zstd{
+	uint64_t maxSize( uint64_t uncompressed_size );
+	std::pair<std::unique_ptr<char[]>, uint64_t> compress( const void* in_data, uint64_t in_size );
+	/*
+	ByteView compress( const char* data, char* out );
+	Buffer   compress( const char* data            );
+	bool   decompress( const char* data, char* out );
+	*/
+};
+
+uint64_t zstd::maxSize( uint64_t uncompressed_size )
+	{ return ZSTD_compressBound( uncompressed_size ); }
+
+std::pair<std::unique_ptr<char[]>, uint64_t> zstd::compress( const void* in_data, uint64_t in_size ){
+	//Prepare
+	auto buf_size = zstd::maxSize( in_size );
+	auto buf = std::make_unique<char[]>( buf_size );
+	
+	//Compress
+	auto result = ZSTD_compress( buf.get(), buf_size, in_data, in_size, 11 );
+	if( ZSTD_isError(result) )
+		return { std::make_unique<char[]>(0), 0 };
+	
+	return { std::move( buf ), result };
+}
 
 
 constexpr uint8_t CUSTOM_CODEC_OFFSET = 128;
@@ -97,14 +126,19 @@ std::vector<std::pair<QDir,QFileInfo>> allFiles( QDir current ){
 	result.reserve( files.size() );
 	
 	for( auto& file : files ){
-		if( QFileInfo(file).isDir() && file != "." && file != ".." ){
-			auto subfiles = allFiles( current.path() + "/" + file );
+		if( file == "." || file == ".." )
+			continue;
+		
+		auto path = current.absolutePath() + "/" + file;
+		QFileInfo file_info( path );
+		if( file_info.isDir() ){
+			auto subfiles = allFiles( path );
 			result.reserve( result.size() + subfiles.size() );
 			for( auto& subfile : subfiles )
 				result.emplace_back( subfile );
 		}
 		else
-			result.emplace_back( current, QFileInfo{file} );
+			result.emplace_back( current, file_info );
 	}
 	
 	return result;
@@ -144,12 +178,20 @@ int main(int argc, char* argv[]){
 	
 //	ArchiveConstructor arc;
 	auto dir = QDir(app.arguments()[1]);
-	auto temp_dir = "temp/"; //TODO:
 	
 	auto files = allFiles( dir );
-	auto it = upTo(files.size());
-	for( auto i : it ){
-		std::cout << i << std::endl;
+	for( auto i : upTo(files.size()) ){
+		QFile f( files[i].second.absoluteFilePath() );
+		if( !f.open(QIODevice::ReadOnly) ){
+			std::cout << "Failed to read: " << files[i].second.absoluteFilePath().toLocal8Bit().constData() << std::endl;
+			return -1;
+		}
+		auto buf = f.readAll();
+		
+		std::cout << files[i].second.absoluteFilePath().toLocal8Bit().constData() << std::endl;
+		auto compressed = zstd::compress( buf.data(), buf.size() );
+		std::cout << "\tCompressed: " << compressed.second << std::endl;
+		std::cout << "\tNormal    : " << buf.size() << std::endl;
 	}
 	
 	return 0;

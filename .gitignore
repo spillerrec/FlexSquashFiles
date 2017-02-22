@@ -1,0 +1,13 @@
+Makefile
+*.Debug
+*.Release
+*.pro.user
+
+debug
+release
+*/debug
+*/release
+
+.kdev4/*
+*.kate-swp
+**/.directory

@@ -5,6 +5,10 @@ LIBS += -lzstd
 QT += core
 CONFIG += c++14 console
 
+HEADERS += lib/FxSF/Archive.hpp lib/FxSF/ArchiveConstructor.hpp lib/FxSF/zstd++.hpp
+SOURCES += lib/FxSF/Archive.cpp lib/FxSF/ArchiveConstructor.cpp lib/FxSF/zstd++.cpp
+
+
 # Input
 HEADERS += 
 SOURCES += main.cpp

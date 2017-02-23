@@ -50,13 +50,15 @@ struct File{
 	uint64_t file_start() const{ return offset; }
 	uint64_t file_end()   const{ return file_start() + compressed_size; }
 	
+	void compress(){ filesize -= compressed_size; }
 	void compress( File previous ){
+		compress();
 		offset -= previous.file_end();
-		filesize -= compressed_size;
 	}
+	void decompress(){ filesize += compressed_size; }
 	void decompress( File previous ){
+		decompress();
 		offset += previous.file_end();
-		filesize += compressed_size;
 	}
 	
 	bool streamCompression() const{ return format == STREAM_PREV_CODEC; }
@@ -149,6 +151,8 @@ void Archive::write( Writer& writer ){
 		files[i].compress( files[i-1] );
 		std::cout << "changed: " << files[i].file_start() << " " << files[i].filesize << " " << files[i].compressed_size << std::endl;
 	}
+	if( files.size() > 0 )
+		files[0].compress();
 	std::memcpy( buf.get() + sizeof(HeaderStart), files.data(), sizeof(File)*files.size() );
 	
 	//Compress header

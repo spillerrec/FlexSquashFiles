@@ -7,6 +7,43 @@
 
 using namespace FxSF;
 
+class BufferIO{
+	private:
+		char* data;
+		uint64_t pos{ 0 };
+	
+	public:
+		BufferIO( char* data ) : data( data ) { }
+		
+		template<typename T>
+		void copyTo( std::vector<T>& vec ){
+			auto size = sizeof(T)*vec.size();
+			std::memcpy( vec.data(), data+pos, size );
+			pos += size;
+		}
+		
+		template<typename T>
+		void copyTo( T& t ){
+			auto size = sizeof(T);
+			std::memcpy( &t, data+pos, size );
+			pos += size;
+		}
+		
+		template<typename T>
+		void writeFrom( std::vector<T>& vec ){
+			auto size = sizeof(T)*vec.size();
+			std::memcpy( data+pos, vec.data(), size );
+			pos += size;
+		}
+		
+		template<typename T>
+		void writeFrom( T& t ){
+			auto size = sizeof(T);
+			std::memcpy( data+pos, &t, size );
+			pos += size;
+		}
+};
+
 
 struct HeaderHeader{
 	char magic[4];
@@ -20,7 +57,7 @@ struct HeaderStart{
 };
 
 Archive::Archive( Reader& reader ){
-	//Read headerheader
+	//Read HeaderHeader
 	HeaderHeader headerheader;
 	reader.read( &headerheader, sizeof(headerheader) );
 	
@@ -37,11 +74,13 @@ Archive::Archive( Reader& reader ){
 	
 	//Read HeaderStart
 	HeaderStart start;
-	std::memcpy( &start, main_header.get(), sizeof(start) );
+	
+	BufferIO main_header_reader( main_header.get() );
+	main_header_reader.copyTo( start );
 	
 	//Read files
 	files.resize( start.file_count );
-	std::memcpy( files.data(), main_header.get()+sizeof(start), sizeof(File)*start.file_count );
+	main_header_reader.copyTo( files );
 	
 	//Defilter files
 	if( files.size() > 0 )
@@ -57,7 +96,7 @@ Archive::Archive( Reader& reader ){
 }
 
 void Archive::write( Writer& writer ){
-	//Construct headerheader
+	//Construct HeaderHeader
 	HeaderHeader headerheader;
 	headerheader.magic[0] = 'F';
 	headerheader.magic[1] = 'x';
@@ -68,22 +107,23 @@ void Archive::write( Writer& writer ){
 	headerheader.magic_custom[2] = 0;
 	headerheader.magic_custom[3] = 0;
 	
-	//Construct header
-	auto size = 8 + files.size() * sizeof(File);
-	auto buf = std::make_unique<char[]>( size );
+	//Construct HeaderStart
 	HeaderStart start;
-	start.file_count = files.size();
-	std::cout << "Files: " << start.file_count << std::endl;
+	start.file_count   = files.size();
 	start.folder_count = folders.size();
-	std::memcpy( buf.get(), &start, sizeof(HeaderStart) );
 	
-	for( unsigned i=files.size()-1; i>0; i-- ){
-		std::cout << "normal : " << files[i].file_start() << " " << files[i].filesize << " " << files[i].compressed_size << std::endl;
+	//Filter files
+	for( unsigned i=files.size()-1; i>0; i-- )
 		files[i].compress( files[i-1] );
-	}
 	if( files.size() > 0 )
 		files[0].compress();
-	std::memcpy( buf.get() + sizeof(HeaderStart), files.data(), sizeof(File)*files.size() );
+	
+	//Create header
+	auto size = 8 + files.size() * sizeof(File);
+	auto buf = std::make_unique<char[]>( size );
+	BufferIO buf_writer( buf.get() );
+	buf_writer.writeFrom( start );
+	buf_writer.writeFrom( files );
 	
 	//Compress header
 	auto compressed = zstd::compress( buf.get(), size );
@@ -92,5 +132,4 @@ void Archive::write( Writer& writer ){
 	//Write result
 	writer.write( &headerheader, sizeof(headerheader) );
 	writer.write( compressed.first.get(), compressed.second );
-//	writer.write( buf.get(), size );
 }

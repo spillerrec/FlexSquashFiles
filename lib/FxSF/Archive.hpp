@@ -85,8 +85,10 @@ class Archive{
 				auto fileSize()  const{ return arc->files[id].filesize; }
 		};
 		
+		Archive() {}
+		
 	public:
-	//	Archive( Reader& reader );
+		Archive( Reader& reader );
 		
 		auto fileCount() const{ return files.size(); }
 		

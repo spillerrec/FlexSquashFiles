@@ -63,6 +63,20 @@ struct CounterIterator{
 template<typename T>
 CounterIterator<T> upTo(T last){ return {last}; }
 
+class QtReader : public FxSF::Reader{
+	private:
+		QFile file;
+	public:
+		QtReader( QString path ) : file(path) { file.open(QIODevice::ReadOnly); }
+		
+		bool read( void* buffer, uint64_t amount ) override{
+			//TODO: fail if amount larger than int64_t MAX
+			return file.read( static_cast<char*>(buffer), amount ) == int64_t(amount);
+		}
+		bool seek( uint64_t position ) override
+			{ return file.seek( position ); }
+};
+
 class QtWriter : public FxSF::Writer{
 	private:
 		QFile file;
@@ -103,8 +117,16 @@ int main(int argc, char* argv[]){
 	}
 	
 	auto header = arc.createHeader();
-	QtWriter writer( "test.fxsf" );
-	header.write( writer );
+	{
+		QtWriter writer( "test.fxsf" );
+		header.write( writer );
+	}
+	
+	{
+		QtReader reader( "test.fxsf" );
+		FxSF::Archive in( reader );
+		
+	}
 	
 	return 0;
 }

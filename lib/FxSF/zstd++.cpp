@@ -11,9 +11,13 @@ std::pair<std::unique_ptr<char[]>, uint64_t> zstd::compress( const void* in_data
 	auto buf = std::make_unique<char[]>( buf_size );
 	
 	//Compress
-	auto result = ZSTD_compress( buf.get(), buf_size, in_data, in_size, 11 );
+	auto result = ZSTD_compress( buf.get(), buf_size, in_data, in_size, ZSTD_maxCLevel() );
 	if( ZSTD_isError(result) )
 		return { std::make_unique<char[]>(0), 0 };
 	
 	return { std::move( buf ), result };
+}
+
+uint64_t zstd::getUncompressedSize( const void* in_data, uint64_t in_size ){
+	return ZSTD_getDecompressedSize( in_data, in_size );
 }

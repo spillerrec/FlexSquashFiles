@@ -35,19 +35,23 @@ Archive::Archive( Reader& reader ){
 	if( ZSTD_isError( decompress_result ) )
 		std::cout << "Decompression failure" << std::endl;
 	
+	//Read HeaderStart
 	HeaderStart start;
 	std::memcpy( &start, main_header.get(), sizeof(start) );
-	std::cout << "Files: " << start.file_count << std::endl;
+	
+	//Read files
 	files.resize( start.file_count );
-	std::cout << "Total size: " << sizeof(File)*start.file_count+sizeof(start) << std::endl;
-	std::cout << "Expected: " << main_head_size << std::endl;
 	std::memcpy( files.data(), main_header.get()+sizeof(start), sizeof(File)*start.file_count );
 	
+	//Defilter files
 	if( files.size() > 0 )
 		files[0].decompress();
 	for( size_t i=1; i<files.size(); i++ )
 		files[i].decompress( files[i-1] );
 	
+	//Read folders
+	
+	std::cout << "Files: " << start.file_count << std::endl;
 	for( auto file : files )
 		std::cout << "normal : " << file.file_start() << " " << file.filesize << " " << file.compressed_size << std::endl;
 }

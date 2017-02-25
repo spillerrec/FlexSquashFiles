@@ -63,26 +63,17 @@ struct CounterIterator{
 template<typename T>
 CounterIterator<T> upTo(T last){ return {last}; }
 
-class QtReader : public FxSF::Reader{
+
+class QtIOWrapper : public FxSF::Reader, public FxSF::Writer{
 	private:
 		QFile file;
 	public:
-		QtReader( QString path ) : file(path) { file.open(QIODevice::ReadOnly); }
+		QtIOWrapper( QString path, QIODevice::OpenModeFlag mode ) : file(path) { file.open(mode); }
 		
 		bool read( void* buffer, uint64_t amount ) override{
 			//TODO: fail if amount larger than int64_t MAX
 			return file.read( static_cast<char*>(buffer), amount ) == int64_t(amount);
 		}
-		bool seek( uint64_t position ) override
-			{ return file.seek( position ); }
-};
-
-class QtWriter : public FxSF::Writer{
-	private:
-		QFile file;
-	public:
-		QtWriter( QString path ) : file(path) { file.open(QIODevice::WriteOnly); }
-		
 		bool write( const void* buffer, uint64_t amount ) override{
 			//TODO: fail if amount larger than int64_t MAX
 			return file.write( static_cast<const char*>(buffer), amount ) == int64_t(amount);
@@ -91,6 +82,23 @@ class QtWriter : public FxSF::Writer{
 			{ return file.seek( position ); }
 };
 
+struct QtReader : public QtIOWrapper{
+	QtReader( QString path ) : QtIOWrapper( path, QIODevice::ReadOnly ) { }
+};
+
+struct QtWriter : public QtIOWrapper{
+	QtWriter( QString path ) : QtIOWrapper( path, QIODevice::WriteOnly ) { }
+};
+
+QByteArray readFile( QString path ){
+	QFile f( path );
+	if( !f.open(QIODevice::ReadOnly) ){
+		std::cout << "Failed to read: " << path.toLocal8Bit().constData() << std::endl;
+		return {};
+	}
+	return f.readAll();
+}
+
 int main(int argc, char* argv[]){
 	QCoreApplication app(argc, argv);
 	
@@ -98,34 +106,29 @@ int main(int argc, char* argv[]){
 	auto dir = QDir(app.arguments()[1]);
 	
 	auto files = allFiles( dir );
-	for( auto i : upTo(files.size()) ){
-		QFile f( files[i].second.absoluteFilePath() );
-		if( !f.open(QIODevice::ReadOnly) ){
-			std::cout << "Failed to read: " << files[i].second.absoluteFilePath().toLocal8Bit().constData() << std::endl;
-			return -1;
-		}
-		auto buf = f.readAll();
+	QtWriter temp( "temp.dat" );
+	for( auto& file : files ){
+		auto buf = readFile( file.second.absoluteFilePath() );
 		
-	//	std::cout << files[i].second.absoluteFilePath().toLocal8Bit().constData() << std::endl;
 		auto compressed = zstd::compress( buf.data(), buf.size() );
-		if( compressed.second > buf.size() )
-			std::cout << files[i].second.fileName().toLocal8Bit().constData() << std::endl;
-	//	std::cout << "\tCompressed: " << compressed.second << std::endl;
-	//	std::cout << "\tNormal    : " << buf.size() << std::endl;
+		if( compressed.second > uint64_t(buf.size()) )
+			std::cout << file.second.fileName().toLocal8Bit().constData() << std::endl;
+		temp.write( compressed.first.get(), compressed.second );
 		
-		arc.addFile( files[i].second.fileName().toUtf8().constData(), "", compressed.second, buf.size() );
+		arc.addFile( file.second.fileName().toUtf8().constData(), "", compressed.second, buf.size() );
 	}
 	
 	auto header = arc.createHeader();
 	{
 		QtWriter writer( "test.fxsf" );
 		header.write( writer );
+		
+		//Append "temp.dat"
 	}
 	
 	{
 		QtReader reader( "test.fxsf" );
-		FxSF::Archive in( reader );
-		
+		FxSF::Archive in( reader );	
 	}
 	
 	return 0;

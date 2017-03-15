@@ -3,6 +3,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <numeric>
 #include <zstd.h>
 
 using namespace FxSF;
@@ -46,16 +47,16 @@ class BufferIO{
 
 
 struct HeaderHeader{
-	char     magic[4];
-	char     magic_custom[4];
+	char     magic[4] = { 'F', 'x', 'S', 'F' };
+	char     magic_custom[4] = { 0, 0, 0, 0 };
 	uint32_t header_size;
 	uint32_t main_header_size;
 };
 
 struct HeaderStart{
-	uint8_t  version_fxsf;
-	uint8_t  version_user;
-	uint16_t flags;
+	uint8_t  version_fxsf = 0;
+	uint8_t  version_user = 0;
+	uint16_t flags        = 0;
 	uint32_t file_count;
 	uint32_t folder_count;
 	uint32_t text_size;
@@ -101,17 +102,6 @@ Archive::Archive( Reader& reader ){
 }
 
 void Archive::write( Writer& writer ){
-	//Construct HeaderHeader
-	HeaderHeader headerheader;
-	headerheader.magic[0] = 'F';
-	headerheader.magic[1] = 'x';
-	headerheader.magic[2] = 'S';
-	headerheader.magic[3] = 'F';
-	headerheader.magic_custom[0] = 0;
-	headerheader.magic_custom[1] = 0;
-	headerheader.magic_custom[2] = 0;
-	headerheader.magic_custom[3] = 0;
-	
 	//Construct HeaderStart
 	HeaderStart start;
 	start.file_count   = files.size();
@@ -132,7 +122,15 @@ void Archive::write( Writer& writer ){
 	
 	//Compress header
 	auto compressed = zstd::compress( buf.get(), size );
-	headerheader.header_size = compressed.second;
+	
+	//TODO: Compress text
+	auto text_amount = std::accumulate( strings.begin(), strings.end(), uint64_t(0), [](uint64_t acc, String& s){ return acc + s.length; } );
+	start.text_size = 0;
+	
+	//Construct HeaderHeader
+	HeaderHeader headerheader;
+	headerheader.main_header_size = compressed.second;
+	headerheader.header_size      = compressed.second;
 	
 	//Write result
 	writer.write( &headerheader, sizeof(headerheader) );

@@ -46,14 +46,19 @@ class BufferIO{
 
 
 struct HeaderHeader{
-	char magic[4];
-	char magic_custom[4];
+	char     magic[4];
+	char     magic_custom[4];
 	uint32_t header_size;
+	uint32_t main_header_size;
 };
 
 struct HeaderStart{
+	uint8_t  version_fxsf;
+	uint8_t  version_user;
+	uint16_t flags;
 	uint32_t file_count;
 	uint32_t folder_count;
+	uint32_t text_size;
 };
 
 Archive::Archive( Reader& reader ){

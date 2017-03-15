@@ -18,10 +18,11 @@ struct File{
 	uint64_t offset;
 	uint64_t filesize;
 	uint64_t compressed_size;
-	uint16_t folder;
+	uint32_t folder;
 	uint8_t  format;
-	uint8_t  flags;
-	uint32_t user;
+	uint8_t  flags    = { 0 };
+	uint16_t reserved = { 0 };
+	uint64_t user     = { 0 };
 	
 	uint64_t file_start() const{ return offset; }
 	uint64_t file_end()   const{ return file_start() + compressed_size; }
@@ -67,7 +68,7 @@ class Archive{
 	friend class ArchiveConstructor;
 	private:
 		std::vector<File> files;
-		std::vector<uint16_t> folders;
+		std::vector<uint32_t> folders;
 		std::vector<String> strings;
 		std::unique_ptr<char[]> text_buffer;
 		

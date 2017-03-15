@@ -69,8 +69,13 @@ class Archive{
 	private:
 		std::vector<File> files;
 		std::vector<uint32_t> folders;
+		std::vector<uint32_t> checksums;
 		std::vector<String> strings;
 		std::unique_ptr<char[]> text_buffer;
+		
+		uint64_t textRealSize() const;
+		auto checksumFileSize() const
+			{ return checksums.size() * sizeof(uint32_t); };
 		
 		class Iterator{
 			private:

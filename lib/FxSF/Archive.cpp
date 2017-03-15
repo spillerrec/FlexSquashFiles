@@ -101,6 +101,13 @@ Archive::Archive( Reader& reader ){
 		std::cout << "normal : " << file.file_start() << " " << file.filesize << " " << file.compressed_size << std::endl;
 }
 
+uint64_t Archive::textRealSize() const{
+	return std::accumulate(
+			strings.begin(), strings.end(), uint64_t(0)
+		,	[](uint64_t acc, const String& s){ return acc + s.length; }
+		);
+}
+
 void Archive::write( Writer& writer ){
 	//Construct HeaderStart
 	HeaderStart start;
@@ -123,16 +130,24 @@ void Archive::write( Writer& writer ){
 	//Compress header
 	auto compressed = zstd::compress( buf.get(), size );
 	
-	//TODO: Compress text
-	auto text_amount = std::accumulate( strings.begin(), strings.end(), uint64_t(0), [](uint64_t acc, String& s){ return acc + s.length; } );
-	start.text_size = 0;
+	//Compress text
+	auto compressed_text = zstd::compress( text_buffer.get(), textRealSize() );
+	start.text_size = compressed_text.second;
 	
 	//Construct HeaderHeader
 	HeaderHeader headerheader;
 	headerheader.main_header_size = compressed.second;
-	headerheader.header_size      = compressed.second;
+	uint32_t full_size =
+			compressed.second
+		+	compressed_text.second
+		+	checksumFileSize()
+		+	0 //TODO: User-data
+		;
+	headerheader.header_size = full_size;
 	
 	//Write result
 	writer.write( &headerheader, sizeof(headerheader) );
 	writer.write( compressed.first.get(), compressed.second );
+	writer.write( checksums.data(), checksumFileSize() );
+	writer.write( compressed_text.first.get(), compressed_text.second );
 }

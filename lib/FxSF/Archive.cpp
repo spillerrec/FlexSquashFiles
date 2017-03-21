@@ -109,10 +109,15 @@ uint64_t Archive::textRealSize() const{
 }
 
 void Archive::write( Writer& writer ){
+	//Compress text
+	//NOTE: We need the compressed size in the header
+	auto compressed_text = zstd::compress( text_buffer.get(), textRealSize() );
+	
 	//Construct HeaderStart
 	HeaderStart start;
 	start.file_count   = files.size();
 	start.folder_count = folders.size();
+	start.text_size = compressed_text.second;
 	
 	//Filter files
 	for( unsigned i=files.size()-1; i>0; i-- )
@@ -121,7 +126,7 @@ void Archive::write( Writer& writer ){
 		files[0].compress();
 	
 	//Create header
-	auto size = 8 + files.size() * sizeof(File);
+	auto size = sizeof(start) + files.size() * sizeof(File);
 	auto buf = std::make_unique<char[]>( size );
 	BufferIO buf_writer( buf.get() );
 	buf_writer.writeFrom( start );
@@ -130,9 +135,6 @@ void Archive::write( Writer& writer ){
 	//Compress header
 	auto compressed = zstd::compress( buf.get(), size );
 	
-	//Compress text
-	auto compressed_text = zstd::compress( text_buffer.get(), textRealSize() );
-	start.text_size = compressed_text.second;
 	
 	//Construct HeaderHeader
 	HeaderHeader headerheader;

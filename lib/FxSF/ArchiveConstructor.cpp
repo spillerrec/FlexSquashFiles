@@ -1,5 +1,9 @@
 #include "ArchiveConstructor.hpp"
 
+#include <cstring>
+#include <iostream>
+#include <numeric>
+
 using namespace FxSF;
 
 unsigned ArchiveConstructor::getFolderPos( std::string dir, bool create ){
@@ -13,6 +17,17 @@ void ArchiveConstructor::addFile( std::string name, std::string dir, unsigned co
 	f.size = size;
 	f.compressed_size = compressed_size;
 	files.push_back( f );
+}
+
+uint64_t ArchiveConstructor::text_amount() const{
+	return
+			std::accumulate(
+				files.begin(), files.end(), uint64_t(0)
+				,	[](uint64_t acc, auto& file){ return acc + file.name.size() + 1; }
+			)
+		+
+			0 //TODO: folder names
+		;
 }
 
 Archive ArchiveConstructor::createHeader(){
@@ -34,6 +49,17 @@ Archive ArchiveConstructor::createHeader(){
 		arc.files.push_back( f );
 		
 		current_offset += f.compressed_size;
+	}
+	
+	//Create text table
+	auto size = text_amount();
+	arc.text_buffer = std::make_unique<char[]>( text_amount() );
+	uint64_t offset = 0;
+	for( auto& file : files ){
+		std::memcpy( arc.text_buffer.get() + offset, file.name.c_str(), file.name.size() );
+		offset += file.name.size();
+		arc.text_buffer[offset] = 0;
+		offset++;
 	}
 	
 	return arc;

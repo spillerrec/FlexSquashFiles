@@ -28,6 +28,8 @@ class ArchiveConstructor{
 		std::vector<ArchiveFolder> folders;
 		
 		unsigned getFolderPos( std::string dir, bool create=true );
+		
+		uint64_t text_amount() const;
 	
 	public:
 		ArchiveConstructor(){

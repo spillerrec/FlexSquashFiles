@@ -53,13 +53,19 @@ Archive ArchiveConstructor::createHeader(){
 	
 	//Create text table
 	auto size = text_amount();
+	arc.strings.resize( files.size() );
 	arc.text_buffer = std::make_unique<char[]>( text_amount() );
 	uint64_t offset = 0;
-	for( auto& file : files ){
-		std::memcpy( arc.text_buffer.get() + offset, file.name.c_str(), file.name.size() );
-		offset += file.name.size();
-		arc.text_buffer[offset] = 0;
-		offset++;
+	for( size_t i=0; i<files.size(); i++ ){
+		auto& file = files[i];
+		auto& string = arc.strings[i];
+		
+		string.start = arc.text_buffer.get() + offset;
+		string.length = file.name.size() + 1;
+		
+		std::memcpy( string.start, file.name.c_str(), file.name.size() );
+		offset += string.length;
+		arc.text_buffer[offset-1] = 0;
 	}
 	
 	return arc;

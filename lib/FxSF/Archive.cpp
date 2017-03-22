@@ -74,7 +74,7 @@ Archive::Archive( Reader& reader ){
 	//Decompress main header
 	auto main_head_size = zstd::getUncompressedSize( buf.get(), headerheader.header_size );
 	auto main_header = std::make_unique<char[]>( main_head_size );
-	auto decompress_result = ZSTD_decompress( main_header.get(), main_head_size, buf.get(), headerheader.header_size );
+	auto decompress_result = ZSTD_decompress( main_header.get(), main_head_size, buf.get(), headerheader.main_header_size );
 	if( ZSTD_isError( decompress_result ) )
 		std::cout << "Decompression failure" << std::endl;
 	

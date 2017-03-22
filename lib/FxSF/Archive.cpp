@@ -108,6 +108,10 @@ uint64_t Archive::textRealSize() const{
 		);
 }
 
+template<typename T>
+size_t vectorDataSize( const std::vector<T>& vec )
+	{ return sizeof(T) * vec.size(); }
+
 void Archive::write( Writer& writer ){
 	//Compress text
 	//NOTE: We need the compressed size in the header
@@ -125,12 +129,27 @@ void Archive::write( Writer& writer ){
 	if( files.size() > 0 )
 		files[0].compress();
 	
+	//Create folder headers
+	std::vector<uint32_t> folder_ids;
+	folder_ids.reserve( files.size() );
+	for( auto& file : files )
+		folder_ids.push_back( file.folder );
+	
+	//Create text lengths
+	std::vector<uint16_t> text_lengths;
+	text_lengths.reserve( files.size() );
+	for( auto& string : strings )
+		text_lengths.push_back( string.length );
+	
+	
 	//Create header
-	auto size = sizeof(start) + files.size() * sizeof(File);
+	auto size = sizeof(start) + vectorDataSize( files ) + vectorDataSize( folder_ids ) + vectorDataSize( text_lengths );
 	auto buf = std::make_unique<char[]>( size );
 	BufferIO buf_writer( buf.get() );
 	buf_writer.writeFrom( start );
 	buf_writer.writeFrom( files );
+	buf_writer.writeFrom( folder_ids );
+	buf_writer.writeFrom( text_lengths );
 	
 	//Compress header
 	auto compressed = zstd::compress( buf.get(), size );

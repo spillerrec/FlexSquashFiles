@@ -99,6 +99,24 @@ QByteArray readFile( QString path ){
 	return f.readAll();
 }
 
+bool copyContentsInto( QFileInfo sourcePath, QFileInfo destination ){
+	QFile in(   sourcePath.filePath() );
+	QFile out( destination.filePath() );
+	
+	if( !in .open( QIODevice::ReadOnly  ) )
+		return false;
+	if( !out.open( QIODevice::WriteOnly | QIODevice::Append ) )
+		return false;
+	
+	QByteArray buf;
+	do{
+		buf = in.read( 4*1024 );
+		out.write( buf );
+	} while( buf.size() > 0 );
+	
+	return true;
+}
+
 int main(int argc, char* argv[]){
 	QCoreApplication app(argc, argv);
 	
@@ -106,28 +124,32 @@ int main(int argc, char* argv[]){
 	auto dir = QDir(app.arguments()[1]);
 	
 	auto files = allFiles( dir );
-	QtWriter temp( "temp.dat" );
-	for( auto& file : files ){
-		auto buf = readFile( file.second.absoluteFilePath() );
-		
-		auto compressed = zstd::compress( buf.data(), buf.size() );
-		if( compressed.second > uint64_t(buf.size()) )
-			std::cout << file.second.fileName().toLocal8Bit().constData() << std::endl;
-		temp.write( compressed.first.get(), compressed.second );
-		
-		arc.addFile( file.second.fileName().toUtf8().constData(), "", compressed.second, buf.size() );
+	
+	{	QtWriter temp( "temp.dat" );
+		//TODO: Make temporary file
+		for( auto& file : files ){
+			auto buf = readFile( file.second.absoluteFilePath() );
+			
+			auto compressed = zstd::compress( buf.data(), buf.size() );
+			if( compressed.second > uint64_t(buf.size()) )
+				std::cout << file.second.fileName().toLocal8Bit().constData() << std::endl;
+			temp.write( compressed.first.get(), compressed.second );
+			
+			arc.addFile( file.second.fileName().toUtf8().constData(), "", compressed.second, buf.size() );
+		}
 	}
 	
 	auto header = arc.createHeader();
-	{
-		QtWriter writer( "test.fxsf" );
-		header.write( writer );
-		
-		//Append "temp.dat"
-	}
 	
-	{
-		QtReader reader( "test.fxsf" );
+	{	QtWriter writer( "test.fxsf" );
+		header.write( writer );
+	}
+		
+	//Append "temp.dat"
+	if( !copyContentsInto( {"temp.dat"}, {"test.fxsf"} ) )
+		return -1;
+	
+	{	QtReader reader( "test.fxsf" );
 		FxSF::Archive in( reader );	
 	}
 	

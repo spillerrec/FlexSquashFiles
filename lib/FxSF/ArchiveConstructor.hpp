@@ -11,6 +11,26 @@
 
 namespace FxSF{
 	
+class FoldersConstructor{
+	private:
+		struct ArchiveFolder{
+			unsigned parent = { 0 };
+			std::string folder;
+			ArchiveFolder(){}
+			ArchiveFolder( unsigned parent, std::string folder)
+				: parent(parent), folder(folder) {}
+		};
+		std::vector<ArchiveFolder> folders;
+		const ArchiveFolder& get( unsigned id ) const;
+		unsigned getRoot() const{ return 0; }
+		
+	public:
+		FoldersConstructor(){ folders.push_back({}); }
+		unsigned getFolder( std::string folder, unsigned parent, bool create=true );
+		unsigned addFolderPath( std::string path );
+		const std::string& operator[](unsigned index) const
+			{ return get(index).folder; }
+};
 
 class ArchiveConstructor{
 	private:
@@ -22,19 +42,12 @@ class ArchiveConstructor{
 		};
 		std::vector<ArchiveFile> files;
 		
-		struct ArchiveFolder{
-			std::string folder;
-		};
-		std::vector<ArchiveFolder> folders;
-		
-		unsigned getFolderPos( std::string dir, bool create=true );
+		FoldersConstructor folders;
 		
 		uint64_t text_amount() const;
 	
 	public:
-		ArchiveConstructor(){
-			folders.push_back( {} );
-		}
+		ArchiveConstructor(){ }
 		void addFile( std::string name, std::string dir, unsigned compressed_size, unsigned size );
 		
 		Archive createHeader();

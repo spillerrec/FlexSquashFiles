@@ -5,6 +5,7 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QDebug>
 
 
 #include <iostream>
@@ -117,6 +118,11 @@ bool copyContentsInto( QFileInfo sourcePath, QFileInfo destination ){
 	return true;
 }
 
+QString relativeTo( QDir parent, QFileInfo child ){
+	auto path = child.absoluteFilePath();
+	return path.right( path.size() - parent.absolutePath().size() - 1 );
+}
+
 int main(int argc, char* argv[]){
 	QCoreApplication app(argc, argv);
 	
@@ -135,7 +141,11 @@ int main(int argc, char* argv[]){
 				std::cout << file.second.fileName().toLocal8Bit().constData() << std::endl;
 			temp.write( compressed.first.get(), compressed.second );
 			
-			arc.addFile( file.second.fileName().toUtf8().constData(), "", compressed.second, buf.size() );
+			arc.addFile(
+					file.second.fileName().toUtf8().constData()
+				,	relativeTo( dir, file.second ).toUtf8().constData()
+				,	compressed.second, buf.size()
+				);
 		}
 	}
 	

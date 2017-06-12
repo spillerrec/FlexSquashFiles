@@ -21,10 +21,12 @@ Applications not recognizing this string are not allowed to modify the file with
 
 If `Header size` is `0`, then the archive is empty and it should not attempt to parse the header segment.
 
+**TODO:** Reserve the two highest bytes of `Main header size` to select compression method? `0` would be ZSTD so we don't have to worry about it for now.
+
 
 **Rationale**
 Including an user-definablee magic code makes it easy to identify a custom file format using this archive format as a base. ZIP based formats need to resort forcing the first file to be an uncompressed recognizable string, which even then is not garantied to be at a fixed position. With FxSF, checking the first 8 bytes is all there is needed for a codec to tell if it can decode a file. This is also wastly less space required than ZIP which needs to specify a file header (including a filename).
-It also makes ensures that conforming implementations know that special restrictions might apply.
+It also ensures that conforming implementations know that special restrictions might apply.
 
 
 Header
@@ -44,6 +46,8 @@ The main header and text segments are indidually ZSTD compressed each with globa
 It is optional, which is defined in the main header.
 
 `User-data` is a space custom extensions can store anything, and extends from the end of the checksums to the `header leght`. If no custom extension is defined, this segment must not be present.
+
+**TODO:** Dictionary encoding, we should have an way of storing those dictionaries in a way we can refer to them easily. We can't have them as files, as they would be extracted. Or perhaps files with special flags? Also I have seen that compressing the dictionaries can be very benificial, so this should be supported.
 
 **Rationale**
 The separation of the text strings and rest of the header is of two reasons. Filenames/paths are the only thing which have a variable lenght, by storing the text separately we can read the rest of the headers directly into the arrays with a few calls. Furthermore we can load the entire text segment into memory and easily create a text table to avoid creating lots of small allocations.

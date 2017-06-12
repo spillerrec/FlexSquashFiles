@@ -1,6 +1,7 @@
 #include "Archive.hpp"
 #include "zstd++.hpp"
 
+#include <algorithm>
 #include <cstring>
 #include <iostream>
 #include <numeric>
@@ -21,6 +22,12 @@ class BufferIO{
 			auto size = sizeof(T)*vec.size();
 			std::memcpy( vec.data(), data+pos, size );
 			pos += size;
+		}
+		
+		template<typename T>
+		void copyTo( std::vector<T>& vec, unsigned amount ){
+			vec.resize( amount );
+			copyTo( vec );
 		}
 		
 		template<typename T>
@@ -45,6 +52,24 @@ class BufferIO{
 		}
 };
 
+class ZstdDecompress{
+	private:
+		char* buf;
+		uint64_t size;
+		
+	public:
+		ZstdDecompress( char* compressed, uint64_t size )
+			:	buf(compressed), size(size) { }
+		
+		std::unique_ptr<char[]> operator()(){
+			auto u_size = zstd::getUncompressedSize( buf, size );
+			auto u_buf = std::make_unique<char[]>( u_size );
+			if( ZSTD_isError( ZSTD_decompress( u_buf.get(), u_size, buf, size ) ) )
+				return { };
+			return std::move( u_buf );
+		}
+};
+
 
 struct HeaderHeader{
 	char     magic[4] = { 'F', 'x', 'S', 'F' };
@@ -63,19 +88,20 @@ struct HeaderStart{
 };
 
 Archive::Archive( Reader& reader ){
+	auto read = [&]( uint64_t amount ){
+			auto buf = std::make_unique<char[]>( amount );
+			reader.read( buf.get(), amount );
+			return std::move( buf );
+		};
+	
 	//Read HeaderHeader
 	HeaderHeader headerheader;
 	reader.read( &headerheader, sizeof(headerheader) );
 	
-	//Read header
-	auto buf = std::make_unique<char[]>( headerheader.header_size );
-	reader.read( buf.get(), headerheader.header_size );
-	
-	//Decompress main header
-	auto main_head_size = zstd::getUncompressedSize( buf.get(), headerheader.header_size );
-	auto main_header = std::make_unique<char[]>( main_head_size );
-	auto decompress_result = ZSTD_decompress( main_header.get(), main_head_size, buf.get(), headerheader.main_header_size );
-	if( ZSTD_isError( decompress_result ) )
+	//Read and decompress main header
+	auto buf = read( headerheader.main_header_size );
+	auto main_header = ZstdDecompress( buf.get(), headerheader.main_header_size )();
+	if( !main_header )
 		std::cout << "Decompression failure" << std::endl;
 	
 	//Read HeaderStart
@@ -85,8 +111,7 @@ Archive::Archive( Reader& reader ){
 	main_header_reader.copyTo( start );
 	
 	//Read files
-	files.resize( start.file_count );
-	main_header_reader.copyTo( files );
+	main_header_reader.copyTo( files, start.file_count );
 	
 	//Defilter files
 	if( files.size() > 0 )
@@ -95,7 +120,29 @@ Archive::Archive( Reader& reader ){
 		files[i].decompress( files[i-1] );
 	
 	//Read folders
+	main_header_reader.copyTo( folders, start.folder_count );
 	
+	//Read text lenghts
+	std::vector<uint16_t> text_lengths;
+	main_header_reader.copyTo( text_lengths, start.file_count );
+	//TODO: Folders!
+	//TODO: Decode into strings
+	
+	
+	//Read checksums
+//	checksums.resize( start.file_count );
+//	reader.read( checksums.data(), sizeof(uint32_t)*checksums.size() );
+	
+	//Read Text
+	auto text_buf = read( start.text_size );
+	text_buffer = ZstdDecompress( text_buf.get(), start.text_size )();
+	if( !text_buffer ){
+		std::cout << "Text decompression failure" << std::endl;
+		return;
+	}
+	//TODO: Store final size
+	
+	//NOTE: Debug
 	std::cout << "Files: " << start.file_count << std::endl;
 	for( auto file : files )
 		std::cout << "normal : " << file.file_start() << " " << file.filesize << " " << file.compressed_size << std::endl;
@@ -129,26 +176,21 @@ void Archive::write( Writer& writer ){
 	if( files.size() > 0 )
 		files[0].compress();
 	
-	//Create folder headers
-	std::vector<uint32_t> folder_ids;
-	folder_ids.reserve( files.size() );
-	for( auto& file : files )
-		folder_ids.push_back( file.folder );
-	
 	//Create text lengths
 	std::vector<uint16_t> text_lengths;
 	text_lengths.reserve( files.size() );
 	for( auto& string : strings )
 		text_lengths.push_back( string.length );
+	//TODO: folders!
 	
 	
 	//Create header
-	auto size = sizeof(start) + vectorDataSize( files ) + vectorDataSize( folder_ids ) + vectorDataSize( text_lengths );
+	auto size = sizeof(start) + vectorDataSize( files ) + vectorDataSize( folders ) + vectorDataSize( text_lengths );
 	auto buf = std::make_unique<char[]>( size );
 	BufferIO buf_writer( buf.get() );
 	buf_writer.writeFrom( start );
 	buf_writer.writeFrom( files );
-	buf_writer.writeFrom( folder_ids );
+	buf_writer.writeFrom( folders );
 	buf_writer.writeFrom( text_lengths );
 	
 	//Compress header

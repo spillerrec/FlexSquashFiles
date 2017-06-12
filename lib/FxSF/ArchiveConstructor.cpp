@@ -107,6 +107,7 @@ Archive ArchiveConstructor::createHeader(){
 		offset += string.length;
 		arc.text_buffer[offset-1] = 0;
 	}
+	//TODO: Folders
 	
 	return arc;
 }

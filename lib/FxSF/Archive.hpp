@@ -70,8 +70,10 @@ class Archive{
 		std::vector<File> files;
 		std::vector<uint32_t> folders;
 		std::vector<uint32_t> checksums;
+		
 		std::vector<String> strings;
 		std::unique_ptr<char[]> text_buffer;
+		unsigned buffer_size{ 0 };
 		
 		uint64_t textRealSize() const;
 		auto checksumFileSize() const

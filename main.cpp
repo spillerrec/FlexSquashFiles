@@ -119,8 +119,14 @@ bool copyContentsInto( QFileInfo sourcePath, QFileInfo destination ){
 }
 
 QString relativeTo( QDir parent, QFileInfo child ){
-	auto path = child.absoluteFilePath();
-	return path.right( path.size() - parent.absolutePath().size() - 1 );
+	auto path = child.absolutePath();
+	auto parent_path = parent.absolutePath();
+	
+	//Special case, we are in the root folder
+	if( path.size() <= parent_path.size() )
+		return "";
+	
+	return path.right( path.size() - parent_path.size() - 1 );
 }
 
 int main(int argc, char* argv[]){

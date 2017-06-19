@@ -30,6 +30,11 @@ class FoldersConstructor{
 		unsigned addFolderPath( std::string path );
 		const std::string& operator[](unsigned index) const
 			{ return get(index).folder; }
+			
+		std::vector<uint32_t> folderMap() const;
+		
+		auto begin() const{ return folders.begin(); }
+		auto end()   const{ return folders.end();   }
 };
 
 class ArchiveConstructor{

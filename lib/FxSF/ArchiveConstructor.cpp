@@ -50,6 +50,17 @@ unsigned FoldersConstructor::addFolderPath( std::string path ){
 	return getFolder( name, addFolderPath( parent ) );
 }
 
+std::vector<uint32_t> FoldersConstructor::folderMap() const{
+	std::vector<uint32_t> map;
+	map.reserve( folders.size() + 1 );
+	map.push_back( 0 );
+	
+	for( auto folder : folders )
+		map.push_back( folder.parent );
+	
+	return map;
+}
+
 void ArchiveConstructor::addFile( std::string name, std::string dir, unsigned compressed_size, unsigned size ){
 	ArchiveFile f;
 	f.name = name;
@@ -66,7 +77,10 @@ uint64_t ArchiveConstructor::text_amount() const{
 				,	[](uint64_t acc, auto& file){ return acc + file.name.size() + 1; }
 			)
 		+
-			0 //TODO: folder names
+			std::accumulate(
+				folders.begin(), folders.end(), uint64_t(0)
+				,	[](uint64_t acc, auto& folder){ return acc + folder.folder.size() + 1; }
+			)
 		;
 }
 
@@ -74,7 +88,7 @@ Archive ArchiveConstructor::createHeader(){
 	//TODO: create folder map
 	//TODO: sort by how often they are used
 	Archive arc;
-	arc.folders.push_back( 0 );
+	arc.folders = folders.folderMap();
 	
 	uint64_t current_offset = 0;
 	for( auto& file : files ){
@@ -82,7 +96,7 @@ Archive ArchiveConstructor::createHeader(){
 		f.offset = current_offset;
 		f.filesize = file.size;
 		f.compressed_size = file.compressed_size;
-		f.folder = 0; //TODO:
+		f.folder = file.folder_id;
 		f.format = 1; //TODO:
 		f.flags  = 0; //TODO:
 		f.user   = 0; //TODO:
@@ -92,22 +106,24 @@ Archive ArchiveConstructor::createHeader(){
 	}
 	
 	//Create text table
-	auto size = text_amount();
-	arc.strings.resize( files.size() );
 	arc.text_buffer = std::make_unique<char[]>( text_amount() );
 	uint64_t offset = 0;
-	for( size_t i=0; i<files.size(); i++ ){
-		auto& file = files[i];
-		auto& string = arc.strings[i];
-		
-		string.start = arc.text_buffer.get() + offset;
-		string.length = file.name.size() + 1;
-		
-		std::memcpy( string.start, file.name.c_str(), file.name.size() );
-		offset += string.length;
-		arc.text_buffer[offset-1] = 0;
-	}
-	//TODO: Folders
+	auto copy_name = [&](const std::string& str){
+			String s;
+			s.start = arc.text_buffer.get() + offset;
+			s.length = str.size() + 1;
+			
+			std::memcpy( s.start, str.c_str(), str.size() );
+			offset += s.length;
+			arc.text_buffer[offset-1] = 0;
+			return s;
+		};
+	arc.strings.reserve( files.size() + arc.folders.size() );
+	for( auto& file : files )
+		arc.strings.push_back( copy_name( file.name ) );
+	
+	for( auto& folder : folders )
+		arc.strings.push_back( copy_name( folder.folder ) );
 	
 	return arc;
 }

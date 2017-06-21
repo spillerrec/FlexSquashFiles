@@ -49,6 +49,9 @@ struct File{
 struct String{
 	char* start;
 	unsigned length;
+	String() {}
+	String( char* start, unsigned length )
+		: start(start), length(length) {}
 };
 
 class Reader{
@@ -82,15 +85,31 @@ class Archive{
 		class Iterator{
 			private:
 				Archive* arc;
-				unsigned id;
+				size_t id;
+				
+				auto& file()       { return arc->files[id]; }
+				auto& file() const { return arc->files[id]; }
 				
 			public:
-				Iterator( Archive& arc, unsigned id )
+				Iterator( Archive& arc, size_t id )
 					: arc(&arc), id(id) {}
 					
-				auto fileStart() const{ return arc->files[id].file_start(); }
-				auto fileEnd()   const{ return arc->files[id].file_end(); }
-				auto fileSize()  const{ return arc->files[id].filesize; }
+				auto fileStart() const{ return file().file_start(); }
+				auto fileEnd()   const{ return file().file_end(); }
+				auto fileSize()  const{ return file().filesize; }
+				
+				auto name() const{ return arc->strings[id]; }
+				auto folder() const{ return file().folder; }
+				
+				bool operator!=(const Iterator& other) const
+					{ return arc != other.arc || id != other.id; }
+				
+				Iterator& operator++(){
+					id++;
+					return *this;
+				}
+				auto& operator*()       { return *this; }
+				auto& operator*() const { return *this; }
 		};
 		
 		Archive() {}
@@ -101,6 +120,9 @@ class Archive{
 		auto fileCount() const{ return files.size(); }
 		
 		void write( Writer& writer );
+		
+		Iterator begin(){ return {*this, 0}; }
+		Iterator end(){ return {*this, files.size()}; }
 };
 
 	

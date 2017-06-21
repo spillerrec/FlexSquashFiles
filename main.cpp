@@ -152,6 +152,7 @@ int main(int argc, char* argv[]){
 				,	relativeTo( dir, file.second ).toUtf8().constData()
 				,	compressed.second, buf.size()
 				);
+			//TODO: Empty folders?
 		}
 	}
 	
@@ -166,7 +167,11 @@ int main(int argc, char* argv[]){
 		return -1;
 	
 	{	QtReader reader( "test.fxsf" );
-		FxSF::Archive in( reader );	
+		FxSF::Archive in( reader );
+		for( auto& file : in ){
+			//TODO: Folder name
+			std::cout << file.name().start << "\n";
+		}
 	}
 	
 	return 0;

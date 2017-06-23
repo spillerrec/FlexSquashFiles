@@ -129,6 +129,17 @@ QString relativeTo( QDir parent, QFileInfo child ){
 	return path.right( path.size() - parent_path.size() - 1 );
 }
 
+QString fromFxsfString( FxSF::String s )
+	{ return QString( s.start ); }
+	
+QString folderPath( const FxSF::Archive& arc, unsigned id ){
+	auto parent = arc.folderParent(id);
+	auto current = fromFxsfString(arc.folderName(id));
+	if(id == parent)
+		return current;
+	return folderPath( arc, parent ) + "/" + current;
+}
+
 int main(int argc, char* argv[]){
 	QCoreApplication app(argc, argv);
 	
@@ -170,6 +181,7 @@ int main(int argc, char* argv[]){
 		FxSF::Archive in( reader );
 		for( auto& file : in ){
 			//TODO: Folder name
+			std::cout << "Dir: " << folderPath(in, file.folder()).toLocal8Bit().constData() << "/";
 			std::cout << file.name().start << "\n";
 		}
 	}

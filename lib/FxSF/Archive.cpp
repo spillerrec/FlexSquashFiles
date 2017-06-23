@@ -124,8 +124,7 @@ Archive::Archive( Reader& reader ){
 	
 	//Read text lenghts
 	std::vector<uint16_t> text_lengths;
-	main_header_reader.copyTo( text_lengths, start.file_count );
-	//TODO: Folders!
+	main_header_reader.copyTo( text_lengths, start.file_count + start.folder_count );
 	
 	
 	//Read checksums
@@ -143,7 +142,7 @@ Archive::Archive( Reader& reader ){
 	//TODO: Decode into strings with text lenghts
 	strings.reserve( start.file_count );
 	auto text_offset = text_buffer.get();
-	for( unsigned i=0; i<start.file_count; i++ ){
+	for( unsigned i=0; i<start.file_count + start.folder_count; i++ ){
 		strings.emplace_back( text_offset, text_lengths[i] );
 		text_offset += text_lengths[i];
 	}
@@ -187,10 +186,9 @@ void Archive::write( Writer& writer ){
 	
 	//Create text lengths
 	std::vector<uint16_t> text_lengths;
-	text_lengths.reserve( files.size() );
+	text_lengths.reserve( strings.size() );
 	for( auto& string : strings )
 		text_lengths.push_back( string.length );
-	//TODO: folders!
 	
 	
 	//Create header

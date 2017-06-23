@@ -123,6 +123,11 @@ class Archive{
 		
 		Iterator begin(){ return {*this, 0}; }
 		Iterator end(){ return {*this, files.size()}; }
+		
+		auto folderName( unsigned id ) const
+			{ return strings[fileCount() + id]; }
+		auto folderParent( unsigned id ) const
+			{ return folders[id]; }
 };
 
 	

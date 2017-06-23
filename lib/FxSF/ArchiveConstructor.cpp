@@ -53,7 +53,6 @@ unsigned FoldersConstructor::addFolderPath( std::string path ){
 std::vector<uint32_t> FoldersConstructor::folderMap() const{
 	std::vector<uint32_t> map;
 	map.reserve( folders.size() + 1 );
-	map.push_back( 0 );
 	
 	for( auto folder : folders )
 		map.push_back( folder.parent );

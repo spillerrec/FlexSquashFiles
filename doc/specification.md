@@ -5,6 +5,7 @@ The format contains 3 main segments:
 
 TODO: Everything here is little endian. Any reason for big-endian?
 TODO: Is alignment important?
+TODO: Bit 0 is the least significant bit, bit 7 is the most significant bit
 
 HeaderHeader
 --------

@@ -12,7 +12,7 @@ namespace FxSF{
 	
 
 constexpr uint8_t CUSTOM_CODEC_OFFSET = 128;
-constexpr uint8_t STREAM_PREV_CODEC = 127;
+constexpr uint8_t STREAM_PREV_CODEC = 1;
 
 struct File{
 	uint64_t offset;
@@ -38,7 +38,7 @@ struct File{
 		offset += previous.file_end();
 	}
 	
-	bool streamCompression() const{ return format == STREAM_PREV_CODEC; }
+	bool streamCompression() const{ return flags & STREAM_PREV_CODEC; }
 	bool customCodec()       const{ return format >= CUSTOM_CODEC_OFFSET; }
 	bool getFormat()         const{ return format; }
 	bool getCustomFormat()   const{ return format - CUSTOM_CODEC_OFFSET; }

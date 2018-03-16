@@ -190,3 +190,4 @@ If the files can be compressed ahead of time, streaming is possible. This approa
 - Create the complete header
 - Write header-header and header
 - Write each compressed file, making sure it matches the sizes specified
+

@@ -10,11 +10,17 @@
 
 #include <iostream>
 
+struct File{
+	QDir dir;
+	QFileInfo info;
+	
+	File( QDir dir, QFileInfo info ) : dir(dir), info(info) {}
+};
 
-std::vector<std::pair<QDir,QFileInfo>> allFiles( QDir current ){
+std::vector<File> allFiles( QDir current ){
 	auto files = current.entryList();
 	
-	std::vector<std::pair<QDir,QFileInfo>> result;
+	std::vector<File> result;
 	result.reserve( files.size() );
 	
 	for( auto& file : files ){
@@ -140,27 +146,21 @@ QString folderPath( const FxSF::Archive& arc, unsigned id ){
 	return folderPath( arc, parent ) + "/" + current;
 }
 
-int main(int argc, char* argv[]){
-	QCoreApplication app(argc, argv);
-	
+int compress( QString dir, std::vector<File> files, QString outpath ){
 	FxSF::ArchiveConstructor arc;
-	auto dir = QDir(app.arguments()[1]);
-	
-	auto files = allFiles( dir );
-	
 	{	QtWriter temp( "temp.dat" );
 		//TODO: Make temporary file
 		for( auto& file : files ){
-			auto buf = readFile( file.second.absoluteFilePath() );
+			auto buf = readFile( file.info.absoluteFilePath() );
 			
 			auto compressed = zstd::compress( buf.data(), buf.size() );
 			if( compressed.second > uint64_t(buf.size()) )
-				std::cout << file.second.fileName().toLocal8Bit().constData() << std::endl;
+				std::cout << file.info.fileName().toLocal8Bit().constData() << std::endl;
 			temp.write( compressed.first.get(), compressed.second );
 			
 			arc.addFile(
-					file.second.fileName().toUtf8().constData()
-				,	relativeTo( dir, file.second ).toUtf8().constData()
+					file.info.fileName().toUtf8().constData()
+				,	relativeTo( dir, file.info ).toUtf8().constData()
 				,	compressed.second, buf.size()
 				);
 			//TODO: Empty folders?
@@ -169,15 +169,19 @@ int main(int argc, char* argv[]){
 	
 	auto header = arc.createHeader();
 	
-	{	QtWriter writer( "test.fxsf" );
+	{	QtWriter writer( outpath );
 		header.write( writer );
 	}
 		
 	//Append "temp.dat"
-	if( !copyContentsInto( {"temp.dat"}, {"test.fxsf"} ) )
+	if( !copyContentsInto( {"temp.dat"}, {outpath} ) )
 		return -1;
 	
-	{	QtReader reader( "test.fxsf" );
+	return 0;
+}
+
+void list_archive( QString path ){
+	{	QtReader reader( path );
 		FxSF::Archive in( reader );
 		for( auto& file : in ){
 			//TODO: Folder name
@@ -185,6 +189,19 @@ int main(int argc, char* argv[]){
 			std::cout << file.name().start << "\n";
 		}
 	}
+}
+
+int main(int argc, char* argv[]){
+	QCoreApplication app(argc, argv);
+	
+	auto dir = app.arguments()[1]; //TODO:
+	
+	QString outpath = "test.fxsf"; //TODO
+	auto files = allFiles( dir );
+	if( !compress( dir, files, outpath ) )
+		return -1;
+	
+	list_archive( outpath );
 	
 	return 0;
 }

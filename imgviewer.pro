@@ -11,7 +11,7 @@ SOURCES += lib/FxSF/Archive.cpp lib/FxSF/ArchiveConstructor.cpp lib/FxSF/zstd++.
 
 # Input
 HEADERS += 
-SOURCES += main.cpp
+SOURCES += cli/main.cpp
 
 # Generate both debug and release on Linux (disabled)
 CONFIG += debug_and_release

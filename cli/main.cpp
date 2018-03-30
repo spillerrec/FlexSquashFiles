@@ -181,13 +181,20 @@ int compress( QString dir, std::vector<File> files, QString outpath ){
 }
 
 void list_archive( QString path ){
-	{	QtReader reader( path );
-		FxSF::Archive in( reader );
-		for( auto& file : in ){
-			//TODO: Folder name
-			std::cout << "Dir: " << folderPath(in, file.folder()).toLocal8Bit().constData() << "/";
-			std::cout << file.name().start << "\n";
-		}
+	QtReader reader( path );
+	FxSF::Archive in( reader );
+	for( auto& file : in ){
+		//TODO: Folder name
+		std::cout << "Dir: " << folderPath(in, file.folder()).toLocal8Bit().constData() << "/";
+		std::cout << file.name().start << "\n";
+	}
+}
+
+void extract( QString archive_path, QString output_path ){
+	QtReader reader( archive_path );
+	FxSF::Archive in( reader );
+	for( auto& file : in ){
+		
 	}
 }
 

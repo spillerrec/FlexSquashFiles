@@ -10,6 +10,7 @@
 using namespace FxSF;
 
 class BufferIO{
+	//TODO: Output buffer size !!!
 	private:
 		char* data;
 		uint64_t pos{ 0 };
@@ -53,6 +54,8 @@ class BufferIO{
 };
 
 class ZstdDecompress{
+	//TODO: Move to zstd++
+	//TODO: Output buffer size !!!
 	private:
 		char* buf;
 		uint64_t size;
@@ -62,11 +65,8 @@ class ZstdDecompress{
 			:	buf(compressed), size(size) { }
 		
 		std::unique_ptr<char[]> operator()(){
-			auto u_size = zstd::getUncompressedSize( buf, size );
-			auto u_buf = std::make_unique<char[]>( u_size );
-			if( ZSTD_isError( ZSTD_decompress( u_buf.get(), u_size, buf, size ) ) )
-				return { };
-			return std::move( u_buf );
+			auto result = zstd::decompress( buf, size );
+			return std::move( result.first );
 		}
 };
 

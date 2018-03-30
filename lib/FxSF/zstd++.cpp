@@ -21,3 +21,15 @@ std::pair<std::unique_ptr<char[]>, uint64_t> zstd::compress( const void* in_data
 uint64_t zstd::getUncompressedSize( const void* in_data, uint64_t in_size ){
 	return ZSTD_getDecompressedSize( in_data, in_size );
 }
+
+std::pair<std::unique_ptr<char[]>, uint64_t> zstd::decompress( const void* in_data, uint64_t in_size ){
+	//Get output-size and prepare a buffer for it
+	auto u_size = zstd::getUncompressedSize( in_data, in_size );
+	auto u_buf = std::make_unique<char[]>( u_size );
+	
+	//Decompress
+	if( ZSTD_isError( ZSTD_decompress( u_buf.get(), u_size, in_data, in_size ) ) )
+		return { std::make_unique<char[]>(0), 0 };
+	return { std::move( u_buf ), u_size };
+	
+}

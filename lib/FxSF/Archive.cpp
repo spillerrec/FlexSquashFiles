@@ -97,6 +97,7 @@ Archive::Archive( Reader& reader ){
 	//Read HeaderHeader
 	HeaderHeader headerheader;
 	reader.read( &headerheader, sizeof(headerheader) );
+	data_offset = headerheader.header_size + sizeof(HeaderHeader);
 	
 	//Read and decompress main header
 	auto buf = read( headerheader.main_header_size );
@@ -214,6 +215,7 @@ void Archive::write( Writer& writer ){
 		+	0 //TODO: User-data
 		;
 	headerheader.header_size = full_size;
+	data_offset = headerheader.header_size + sizeof(HeaderHeader);
 	
 	//Write result
 	writer.write( &headerheader, sizeof(headerheader) );

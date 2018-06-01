@@ -190,12 +190,46 @@ void list_archive( QString path ){
 	}
 }
 
-void extract( QString archive_path, QString output_path ){
+//TODO: Use exceptions instead?
+bool extract( QString archive_path, QString output_path ){
+	//Read archive
 	QtReader reader( archive_path );
 	FxSF::Archive in( reader );
+	
+	//Extract each file
 	for( auto& file : in ){
+		//Seek to position
+		auto offset = file.fileStart() + in.dataOffset();
+		reader.seek( offset );
 		
+		//Create buffer
+		auto size = file.compressedSize();
+		auto buffer = std::make_unique<char[]>( size );
+		
+		//Read data
+		if( !reader.read( buffer.get(), size ) ){
+			std::cout << "File read failed\n";
+			return false;
+		}
+		
+		//Decompress
+		auto data = zstd::decompress( buffer.get(), size );
+		
+		//Construct paths and dirs
+		auto folder = output_path + folderPath(in, file.folder());
+		auto filename = fromFxsfString( file.name() );
+		QDir().mkpath( folder );
+		
+		//Write data to resulting file
+		QFile out_file( folder + "/" + filename );
+		if( !out_file.open( QIODevice::WriteOnly ) ){
+			std::cout << "Couldn't open output file: " << filename.toLocal8Bit().constData() << '\n';
+			return false;
+		}
+		out_file.write( data.first.get(), data.second );
 	}
+	
+	return true;
 }
 
 int main(int argc, char* argv[]){
@@ -203,12 +237,15 @@ int main(int argc, char* argv[]){
 	
 	auto dir = app.arguments()[1]; //TODO:
 	
+	list_archive( "test.fxsf" );
+	extract( "test.fxsf", "output/" );
+	/*
 	QString outpath = "test.fxsf"; //TODO
 	auto files = allFiles( dir );
 	if( !compress( dir, files, outpath ) )
 		return -1;
 	
 	list_archive( outpath );
-	
+	*/
 	return 0;
 }

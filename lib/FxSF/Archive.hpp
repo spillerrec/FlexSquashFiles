@@ -97,6 +97,7 @@ class Archive{
 				auto fileStart() const{ return file().file_start(); }
 				auto fileEnd()   const{ return file().file_end(); }
 				auto fileSize()  const{ return file().filesize; }
+				auto compressedSize() const{ return file().compressed_size; }
 				
 				auto name() const{ return arc->strings[id]; }
 				auto folder() const{ return file().folder; }
@@ -114,6 +115,9 @@ class Archive{
 		
 		Archive() {}
 		
+	private: //Cached info
+		uint32_t data_offset { 0 };
+		
 	public:
 		Archive( Reader& reader );
 		
@@ -128,6 +132,8 @@ class Archive{
 			{ return strings[fileCount() + id]; }
 		auto folderParent( unsigned id ) const
 			{ return folders[id]; }
+			
+		auto dataOffset() const{ return data_offset; }
 };
 
 	

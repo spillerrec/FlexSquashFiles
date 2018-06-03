@@ -7,6 +7,7 @@
 #include <QFile>
 #include <QDebug>
 
+#include <cxxopts.hpp>
 
 #include <iostream>
 
@@ -17,7 +18,7 @@ struct File{
 	File( QDir dir, QFileInfo info ) : dir(dir), info(info) {}
 };
 
-std::vector<File> allFiles( QDir current ){
+std::vector<File> allFiles( QDir current, QDir parent ){
 	auto files = current.entryList();
 	
 	std::vector<File> result;
@@ -30,13 +31,28 @@ std::vector<File> allFiles( QDir current ){
 		auto path = current.absolutePath() + "/" + file;
 		QFileInfo file_info( path );
 		if( file_info.isDir() ){
-			auto subfiles = allFiles( path );
+			auto subfiles = allFiles( path, parent );
 			result.reserve( result.size() + subfiles.size() );
 			for( auto& subfile : subfiles )
 				result.emplace_back( subfile );
 		}
 		else
-			result.emplace_back( current, file_info );
+			result.emplace_back( parent, file_info );
+	}
+	
+	return result;
+}
+std::vector<File> allFiles( QStringList args ){
+	std::vector<File> result;
+	
+	for( auto arg : args ){
+		if( QFileInfo( arg ).isDir() ){
+			auto files = allFiles( arg, arg ); //TODO: Include folder?
+			for( auto file : files )
+				result.push_back( file );
+		}
+		else
+			result.emplace_back( QDir( arg ).dirName(), QFileInfo( arg ) );
 	}
 	
 	return result;
@@ -146,7 +162,7 @@ QString folderPath( const FxSF::Archive& arc, unsigned id ){
 	return folderPath( arc, parent ) + "/" + current;
 }
 
-int compress( QString dir, std::vector<File> files, QString outpath ){
+int compress( std::vector<File> files, QString outpath ){
 	FxSF::ArchiveConstructor arc;
 	{	QtWriter temp( "temp.dat" );
 		//TODO: Make temporary file
@@ -160,7 +176,7 @@ int compress( QString dir, std::vector<File> files, QString outpath ){
 			
 			arc.addFile(
 					file.info.fileName().toUtf8().constData()
-				,	relativeTo( dir, file.info ).toUtf8().constData()
+				,	relativeTo( file.dir, file.info ).toUtf8().constData()
 				,	compressed.second, buf.size()
 				);
 			//TODO: Empty folders?
@@ -176,6 +192,7 @@ int compress( QString dir, std::vector<File> files, QString outpath ){
 	//Append "temp.dat"
 	if( !copyContentsInto( {"temp.dat"}, {outpath} ) )
 		return -1;
+	QFile::remove( "temp.dat" );
 	
 	return 0;
 }
@@ -232,20 +249,40 @@ bool extract( QString archive_path, QString output_path ){
 	return true;
 }
 
-int main(int argc, char* argv[]){
-	QCoreApplication app(argc, argv);
+int main(int argc, const char* argv[]){
+	cxxopts::Options options( "FxSF", "CLI archiver for the FxSF format" );
+	options.add_options()
+		( "c,compress", "Compress files" )
+		( "x,extract",  "Extract files" )
+		( "l,list",  "Show contents of archive", cxxopts::value<std::string>() )
+		( "o,outpath",  "Extract files", cxxopts::value<std::string>() )
+		;
+	auto result = options.parse( argc, argv );
 	
-	auto dir = app.arguments()[1]; //TODO:
+	//Get all file arguments, and convert to QString with the "correct" encoding
+	//TODO: Encoding will still fail on Windows if they fall outside the 8-bit encoding
+	QStringList args;
+	for( int i=0; i<argc; i++ )
+		args << QString::fromLocal8Bit( argv[i] );
 	
-	list_archive( "test.fxsf" );
-	extract( "test.fxsf", "output/" );
-	/*
-	QString outpath = "test.fxsf"; //TODO
-	auto files = allFiles( dir );
-	if( !compress( dir, files, outpath ) )
+	
+	if( (result.count( "compress" ) + result.count( "extract" ) + result.count( "list" )) != 1 ){
+		std::cout << "Select one of compress or extract options\n";
 		return -1;
+	}
 	
-	list_archive( outpath );
-	*/
+	if( result.count( "compress" ) ){
+		if( !compress( allFiles( args ), result["outpath"].as<std::string>().c_str() ) )
+			return -1;
+	}
+	if( result.count( "extract" ) ){
+		for( auto arg : args )
+			if( !extract( arg, result["outpath"].as<std::string>().c_str() ) )
+				return -1;
+	}
+	if( result.count( "list" ) ){		
+		list_archive( result["list"].as<std::string>().c_str() );
+	}
+	
 	return 0;
 }

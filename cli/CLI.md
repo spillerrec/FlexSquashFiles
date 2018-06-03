@@ -13,7 +13,7 @@ Some parameters are standalone flags (e.g. `--autodir`) which never takes an arg
 Compress `<files...>` and store to `<output-filepath>`. Path to folders will include the whole folder
 
 ```bash
-FxSF --compress -outpath <output-filepath> <files...>
+FxSF --compress --outpath <output-filepath> <files...>
 FxSF -c -o <output-filepath> <files...>
 ```
 

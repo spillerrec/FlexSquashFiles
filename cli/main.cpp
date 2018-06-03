@@ -262,7 +262,7 @@ int main(int argc, const char* argv[]){
 	//Get all file arguments, and convert to QString with the "correct" encoding
 	//TODO: Encoding will still fail on Windows if they fall outside the 8-bit encoding
 	QStringList args;
-	for( int i=0; i<argc; i++ )
+	for( int i=1; i<argc; i++ )
 		args << QString::fromLocal8Bit( argv[i] );
 	
 	

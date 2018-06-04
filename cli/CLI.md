@@ -10,14 +10,14 @@ Some parameters are standalone flags (e.g. `--autodir`) which never takes an arg
 
 ##Compressing
 
-Compress `<files...>` and store to `<output-filepath>`. Path to folders will include the whole folder
+Compress `<files...>` and store to `<output-filepath>`. Paths to folders will include the whole folder
 
 ```bash
 FxSF --compress --outpath <output-filepath> <files...>
 FxSF -c -o <output-filepath> <files...>
 ```
 
-Compress `<files...>` and default `<output-filepath>` to `./<dir>` where `<dir>` is parent directory of first file
+Compress `<files...>` and defaults `<output-filepath>` to `./<dir>` where `<dir>` is parent directory of first file
 
 ```bash
 FxSF --compress <files...>

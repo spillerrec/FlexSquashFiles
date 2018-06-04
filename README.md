@@ -13,4 +13,4 @@ Features
 
 Status
 ------
-Very much work in progress
+Bare-bones implementation and simplistic CLI interface

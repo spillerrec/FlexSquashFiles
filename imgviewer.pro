@@ -10,8 +10,8 @@ SOURCES += lib/FxSF/Archive.cpp lib/FxSF/ArchiveConstructor.cpp lib/FxSF/zstd++.
 
 
 # Input
-HEADERS += 
-SOURCES += cli/main.cpp
+HEADERS += cli/core_routines.hpp cli/qt_file_utils.hpp
+SOURCES += cli/core_routines.cpp cli/qt_file_utils.cpp cli/main.cpp
 
 # Generate both debug and release on Linux (disabled)
 CONFIG += debug_and_release

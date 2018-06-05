@@ -8,8 +8,8 @@
 class QString;
 class File;
 
-int compress( std::vector<File> files, QString outpath );
+int compress( std::vector<File> files, QString outpath, bool autodir );
 void list_archive( QString path );
-bool extract( QString archive_path, QString output_path );
+bool extract( QString archive_path, QString output_path, bool autodir );
 
 #endif

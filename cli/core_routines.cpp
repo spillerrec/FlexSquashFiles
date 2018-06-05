@@ -16,15 +16,19 @@
 #include <iostream>
 
 
-static QString relativeTo( QDir parent, QFileInfo child ){
+static QString relativeTo( QDir parent, QFileInfo child, QString root="" ){
 	auto path = child.absolutePath();
 	auto parent_path = parent.absolutePath();
 	
 	//Special case, we are in the root folder
 	if( path.size() <= parent_path.size() )
-		return "";
+		return root;
 	
-	return path.right( path.size() - parent_path.size() - 1 );
+	auto relative = path.right( path.size() - parent_path.size() - 1 );
+	if( root.size() > 0 )
+		relative = root + '/' + relative;
+	
+	return relative;
 }
 
 static QString fromFxsfString( FxSF::String s )
@@ -38,7 +42,13 @@ static QString folderPath( const FxSF::Archive& arc, unsigned id ){
 	return folderPath( arc, parent ) + "/" + current;
 }
 
-int compress( std::vector<File> files, QString outpath ){
+int compress( std::vector<File> files, QString outpath, bool autodir ){
+	//TODO: Fail if no files
+	//TODO: Add everything into a folder called <outpath> if --autodir specified
+	QString base_folder = "";
+	//TODO: get outpath without extension for this
+	//TODO: Rename base folder if everything is in one folder?
+	
 	FxSF::ArchiveConstructor arc;
 	{	QtWriter temp( "temp.dat" );
 		//TODO: Make temporary file
@@ -52,7 +62,7 @@ int compress( std::vector<File> files, QString outpath ){
 			
 			arc.addFile(
 					file.info.fileName().toUtf8().constData()
-				,	relativeTo( file.dir, file.info ).toUtf8().constData()
+				,	relativeTo( file.dir, file.info, base_folder ).toUtf8().constData()
 				,	compressed.second, buf.size()
 				);
 			//TODO: Empty folders?
@@ -84,10 +94,14 @@ void list_archive( QString path ){
 }
 
 //TODO: Use exceptions instead?
-bool extract( QString archive_path, QString output_path ){
+bool extract( QString archive_path, QString output_path, bool autodir ){
 	//Read archive
 	QtReader reader( archive_path );
 	FxSF::Archive in( reader );
+	
+	//TODO: --autodir: put everything in a folder if multiple files in root
+	QString extra_path = "";
+	//TODO: count amount of files in root
 	
 	//Extract each file
 	for( auto& file : in ){
@@ -109,7 +123,7 @@ bool extract( QString archive_path, QString output_path ){
 		auto data = zstd::decompress( buffer.get(), size );
 		
 		//Construct paths and dirs
-		auto folder = output_path + folderPath(in, file.folder());
+		auto folder = output_path + extra_path + folderPath(in, file.folder());
 		auto filename = fromFxsfString( file.name() );
 		QDir().mkpath( folder );
 		

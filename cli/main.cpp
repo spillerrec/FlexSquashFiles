@@ -65,11 +65,8 @@ int main(int argc, const char* argv[]){
 			
 			//TODO: Default output path when not specified
 			auto outpath = getQString( "outpath" );
-			//TODO: encoding
 			
-			//TODO: Add everything into a folder called <outpath> if --autodir specified
-			
-			if( !compress( files, outpath ) )
+			if( !compress( files, outpath, autodir ) )
 				return -1;
 		}
 		
@@ -78,11 +75,8 @@ int main(int argc, const char* argv[]){
 			for( auto arg : args ){
 				//TODO: Default output path when not specified
 				auto outpath = getQString( "outpath" );
-				//TODO: encoding
 				
-				//TODO: --autodir: put everything in a folder if multiple files in root
-				
-				if( !extract( arg, outpath ) )
+				if( !extract( arg, outpath, autodir ) )
 					return -1;
 			}
 		}

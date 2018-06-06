@@ -44,6 +44,7 @@ class ArchiveConstructor{
 			unsigned folder_id;
 			uint64_t compressed_size;
 			uint64_t size;
+			uint32_t checksum;
 		};
 		std::vector<ArchiveFile> files;
 		

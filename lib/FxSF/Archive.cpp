@@ -1,4 +1,5 @@
 #include "Archive.hpp"
+#include "ArchiveInternal.hpp"
 #include "zstd++.hpp"
 
 #include <algorithm>
@@ -53,41 +54,12 @@ class BufferIO{
 		}
 };
 
-class ZstdDecompress{
-	//TODO: Move to zstd++
-	//TODO: Output buffer size !!!
-	private:
-		char* buf;
-		uint64_t size;
-		
-	public:
-		ZstdDecompress( char* compressed, uint64_t size )
-			:	buf(compressed), size(size) { }
-		
-		std::unique_ptr<char[]> operator()(){
-			auto result = zstd::decompress( buf, size );
-			return std::move( result.first );
-		}
-};
-
-
-struct HeaderHeader{
-	char     magic[4] = { 'F', 'x', 'S', 'F' };
-	char     magic_custom[4] = { 0, 0, 0, 0 };
-	uint32_t header_size;
-	uint32_t main_header_size;
-};
-
-struct HeaderStart{
-	uint8_t  version_fxsf = 0;
-	uint8_t  version_user = 0;
-	uint16_t flags        = 0;
-	uint32_t file_count;
-	uint32_t folder_count;
-	uint32_t text_size;
-};
 
 Archive::Archive( Reader& reader ){
+	auto error = [&]( /*int code,*/ const char* message )
+		{ std::cout << message << '\n'; };
+		//TODO: Report this error somehow
+		
 	auto read = [&]( uint64_t amount ){
 			auto buf = std::make_unique<char[]>( amount );
 			reader.read( buf.get(), amount );
@@ -99,16 +71,28 @@ Archive::Archive( Reader& reader ){
 	reader.read( &headerheader, sizeof(headerheader) );
 	data_offset = headerheader.header_size + sizeof(HeaderHeader);
 	
+	//Header sanity checks
+	if( !headerheader.checkMagic() ){
+		error( "Not a FxSF file" );
+		return;
+	}
+	if( std::max(headerheader.header_size, headerheader.main_header_size) > 4000000000 ){
+		error( "Header size is over 4G, arborting" );
+		return; //TODO: change this?
+	}
+	
 	//Read and decompress main header
 	auto buf = read( headerheader.main_header_size );
-	auto main_header = ZstdDecompress( buf.get(), headerheader.main_header_size )();
-	if( !main_header )
-		std::cout << "Decompression failure" << std::endl;
+	auto main_header = zstd::decompress( buf.get(), headerheader.main_header_size );
+	if( !main_header.first ){
+		error( "Failed to decompress header" );
+		return;
+	}
 	
 	//Read HeaderStart
 	HeaderStart start;
 	
-	BufferIO main_header_reader( main_header.get() );
+	BufferIO main_header_reader( main_header.first.get() );
 	main_header_reader.copyTo( start );
 	
 	//Read files
@@ -129,27 +113,34 @@ Archive::Archive( Reader& reader ){
 	
 	
 	//Read checksums
-//	checksums.resize( start.file_count );
-//	reader.read( checksums.data(), sizeof(uint32_t)*checksums.size() );
+	if( false/* !start.noChecksums()*/ ){
+		checksums.resize( start.file_count );
+		reader.read( checksums.data(), sizeof(uint32_t)*checksums.size() );
+	}
 	
 	//Read Text
 	auto text_buf = read( start.text_size );
-	text_buffer = ZstdDecompress( text_buf.get(), start.text_size )();
+	auto text_decompress = zstd::decompress( text_buf.get(), start.text_size );
+	text_buffer = std::move(text_decompress.first);
+	//TODO: check that output size matches text size
 	if( !text_buffer ){
 		std::cout << "Text decompression failure" << std::endl;
 		return;
 	}
 	
-	//TODO: Decode into strings with text lenghts
+	//Decode into strings with text lenghts
 	strings.reserve( start.file_count );
 	auto text_offset = text_buffer.get();
 	for( unsigned i=0; i<start.file_count + start.folder_count; i++ ){
 		strings.emplace_back( text_offset, text_lengths[i] );
 		text_offset += text_lengths[i];
 	}
-//	for(int i=0; i<600; i++ )
-//		std::cout << text_buffer[i];
+	//TODO: check for bounds
 	//TODO: Store final size
+	if( text_decompress.second != textRealSize() ){
+		error( "Decompressed text size does not match" );
+		return;
+	}
 	
 	//NOTE: Debug
 	std::cout << "Files: " << start.file_count << std::endl;

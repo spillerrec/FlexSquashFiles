@@ -102,6 +102,8 @@ class Archive{
 				auto name() const{ return arc->strings[id]; }
 				auto folder() const{ return file().folder; }
 				
+				auto checksum() const{ return arc->checksums[id]; }
+				
 				bool operator!=(const Iterator& other) const
 					{ return arc != other.arc || id != other.id; }
 				

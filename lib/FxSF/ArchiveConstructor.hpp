@@ -54,7 +54,7 @@ class ArchiveConstructor{
 	
 	public:
 		ArchiveConstructor(){ }
-		void addFile( std::string name, std::string dir, unsigned compressed_size, unsigned size );
+		void addFile( std::string name, std::string dir, unsigned compressed_size, unsigned size, uint32_t checksum );
 		
 		Archive createHeader();
 };

@@ -113,7 +113,7 @@ Archive::Archive( Reader& reader ){
 	
 	
 	//Read checksums
-	if( false/* !start.noChecksums()*/ ){
+	if( !start.noChecksums() ){
 		checksums.resize( start.file_count );
 		reader.read( checksums.data(), sizeof(uint32_t)*checksums.size() );
 	}

@@ -60,12 +60,13 @@ std::vector<uint32_t> FoldersConstructor::folderMap() const{
 	return map;
 }
 
-void ArchiveConstructor::addFile( std::string name, std::string dir, unsigned compressed_size, unsigned size ){
+void ArchiveConstructor::addFile( std::string name, std::string dir, unsigned compressed_size, unsigned size, uint32_t checksum ){
 	ArchiveFile f;
 	f.name = name;
 	f.folder_id = folders.addFolderPath( dir );
 	f.size = size;
 	f.compressed_size = compressed_size;
+	f.checksum = checksum;
 	files.push_back( f );
 }
 
@@ -100,6 +101,7 @@ Archive ArchiveConstructor::createHeader(){
 		f.flags  = 0; //TODO:
 		f.user   = 0; //TODO:
 		arc.files.push_back( f );
+		arc.checksums.push_back( file.checksum );
 		
 		current_offset += f.compressed_size;
 	}

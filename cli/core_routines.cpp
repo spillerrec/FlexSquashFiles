@@ -7,6 +7,7 @@
 
 #include "lib/FxSF/Archive.hpp"
 #include "lib/FxSF/ArchiveConstructor.hpp"
+#include "lib/FxSF/checksum.hpp"
 #include "lib/FxSF/zstd++.hpp"
 
 #include <QString>
@@ -64,6 +65,7 @@ int compress( std::vector<File> files, QString outpath, bool autodir ){
 					file.info.fileName().toUtf8().constData()
 				,	relativeTo( file.dir, file.info, base_folder ).toUtf8().constData()
 				,	compressed.second, buf.size()
+				,	checksum::crc32( buf.data(), buf.size() )
 				);
 			//TODO: Empty folders?
 		}
@@ -89,7 +91,7 @@ void list_archive( QString path ){
 	for( auto& file : in ){
 		//TODO: Folder name
 		std::cout << "Dir: " << folderPath(in, file.folder()).toLocal8Bit().constData() << "/";
-		std::cout << file.name().start << "\n";
+		std::cout << fromFxsfString( file.name() ).toLocal8Bit().constData() << " - " << file.checksum() << "\n";
 	}
 }
 

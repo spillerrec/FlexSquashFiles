@@ -37,6 +37,31 @@ class FoldersConstructor{
 		auto end()   const{ return folders.end();   }
 };
 
+class ArchiveFileInfo{
+	friend class ArchiveConstructor;
+	private:
+		std::string name;
+		std::string dir;
+		uint64_t size;
+		uint64_t compressed_size;
+		Compressor compressor{ Compressor::NONE };
+		
+		bool checksum_set{ false };
+		uint32_t checksum{ 0 };
+		
+	public:
+		ArchiveFileInfo( std::string name, std::string dir, uint64_t size );
+		
+		void setCompression( Compressor c, uint64_t compressed_size );
+		
+		void setChecksum( uint32_t checksum ){
+			checksum_set = true;
+			this->checksum = checksum;
+		}
+		
+		bool isValid() const;
+};
+
 class ArchiveConstructor{
 	private:
 		struct ArchiveFile{
@@ -45,6 +70,7 @@ class ArchiveConstructor{
 			uint64_t compressed_size;
 			uint64_t size;
 			uint32_t checksum;
+			Compressor compressor;
 		};
 		std::vector<ArchiveFile> files;
 		
@@ -54,7 +80,7 @@ class ArchiveConstructor{
 	
 	public:
 		ArchiveConstructor(){ }
-		void addFile( std::string name, std::string dir, unsigned compressed_size, unsigned size, uint32_t checksum );
+		void addFile( ArchiveFileInfo file_info );
 		
 		Archive createHeader();
 };

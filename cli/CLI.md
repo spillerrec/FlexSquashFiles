@@ -14,7 +14,7 @@ Compress `<files...>` and store to `<output-filepath>`. Paths to folders will in
 
 ```bash
 FxSF --compress --outpath <output-filepath> <files...>
-FxSF -c -o <output-filepath> <files...>
+FxSF -co <output-filepath> <files...>
 ```
 
 Compress `<files...>` and defaults `<output-filepath>` to `./<dir>` where `<dir>` is parent directory of first file
@@ -28,7 +28,22 @@ Compress files and add them into a root folder named `<output-filepath>`
 
 ```bash
 FxSF --compress --autodir <files...>
+FxSF -ca <files...>
 ```
+
+**TODO:** Include hidden folders?
+
+```bash
+FxSF -ca --hidden <files...>
+```
+
+**TODO:** Set compression cutoff point
+
+```bash
+FxSF -ca --min-ratio <percent> <files...>
+```
+
+Enable compression only if ratio is over 5.2 %: `--min-ratio 5.2`
 
 ##Extracting
 
@@ -80,6 +95,7 @@ Show the file contents of a FxSF file
 
 ```bash
 FxSF --list <FxSF file>
+FxSF -l <FxSF file>
 ```
 
 Verify using CRC
@@ -88,3 +104,4 @@ Verify using CRC
 FxSF --verify <FxSF files...>
 ```
 
+**TODO:** Shorthand should be for verify instead of version, as that what you usually wants? Of course this is not defacto behavior. Then again, sometimes `-v` is for verbose output. Combine it with extraction/compression as well?

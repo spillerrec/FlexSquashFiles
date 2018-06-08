@@ -56,17 +56,29 @@ int compress( std::vector<File> files, QString outpath, bool autodir ){
 		for( auto& file : files ){
 			auto buf = readFile( file.info.absoluteFilePath() );
 			
-			auto compressed = zstd::compress( buf.data(), buf.size() );
-			if( compressed.second > uint64_t(buf.size()) )
-				std::cout << file.info.fileName().toLocal8Bit().constData() << std::endl;
-			temp.write( compressed.first.get(), compressed.second );
-			
-			arc.addFile(
-					file.info.fileName().toUtf8().constData()
-				,	relativeTo( file.dir, file.info, base_folder ).toUtf8().constData()
-				,	compressed.second, buf.size()
-				,	checksum::crc32( buf.data(), buf.size() )
+			auto qstr = []( QString s )
+				{ return std::string( s.toUtf8().constData() ); };
+			FxSF::ArchiveFileInfo info(
+					qstr(file.info.fileName())
+				,	qstr(relativeTo( file.dir, file.info, base_folder ))
+				,	buf.size()
 				);
+			
+			info.setChecksum( checksum::crc32( buf.data(), buf.size() ) );
+			
+			//Try compressing the data
+			auto compressed = zstd::compress( buf.data(), buf.size() );
+			
+			if( compressed.second < uint64_t(buf.size()) ){
+				//Write compressed stream if small enough
+				info.setCompression( FxSF::Compressor::ZSTD, compressed.second );
+				
+				temp.write( compressed.first.get(), compressed.second );
+			}
+			else //Write uncompressed data
+				temp.write( buf.data(), buf.size() );
+			
+			arc.addFile( info );
 			//TODO: Empty folders?
 		}
 	}
@@ -128,6 +140,14 @@ bool extract( QString archive_path, QString output_path, bool autodir ){
 		auto folder = output_path + extra_path + folderPath(in, file.folder());
 		auto filename = fromFxsfString( file.name() );
 		QDir().mkpath( folder );
+		
+		//Verify
+		auto checksum = checksum::crc32( data.first.get(), data.second );
+		if( checksum != file.checksum() ){
+			std::cout << "Checksum failed for " << filename.toLocal8Bit().constData() << ": " << checksum << " vs. " << file.checksum() << '\n';
+			//TODO: Checksum formatting
+			return false; //TODO: ignore errors
+		}
 		
 		//Write data to resulting file
 		QFile out_file( folder + "/" + filename );

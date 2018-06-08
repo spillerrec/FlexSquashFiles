@@ -43,7 +43,7 @@ The header is ZSTD compressed with dictionary compression.
 
 The main header and text segments are individually ZSTD compressed each with global dictionaries which are stored in the decoder. The ZSTD frames must contain the decompressed sizes. The compressed size of `Main header` (used for decompressing) is defined in the `HeaderHeader`, the compressed size of the `Text` segment is specified in the `Main header`.
 
-`Checksums` contains an array of all files in the order the files are defined in the main header. Each checksum is 4 bytes in CRC32 format. (TODO: specify CRC32)
+`Checksums` contains an array of all files in the order the files are defined in the main header. Each checksum is 4 bytes in CRC32 format. (TODO: specify CRC32, it should be the same as ZIP as it seems to be defacto for archive formats and I see no advantages to using something else.)
 It is optional, which is defined in the main header.
 
 `User-data` is a space custom extensions can store anything, and extends from the end of the checksums to the `header leght`. If no custom extension is defined, this segment must not be present.

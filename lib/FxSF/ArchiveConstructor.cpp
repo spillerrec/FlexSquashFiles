@@ -60,13 +60,39 @@ std::vector<uint32_t> FoldersConstructor::folderMap() const{
 	return map;
 }
 
-void ArchiveConstructor::addFile( std::string name, std::string dir, unsigned compressed_size, unsigned size, uint32_t checksum ){
+ArchiveFileInfo::ArchiveFileInfo( std::string name, std::string dir, uint64_t size )
+	:	name(name), dir(dir), size(size), compressed_size(size)
+	{ }
+		
+void ArchiveFileInfo::setCompression( Compressor c, uint64_t compressed_size ){
+	compressor = c;
+	this->compressed_size = compressed_size;
+}
+
+bool ArchiveFileInfo::isValid() const{
+	return name.size() > 0 && compressed_size <= size;
+}
+
+
+void ArchiveConstructor::addFile( ArchiveFileInfo file_info ){
+	if( !file_info.isValid() ){
+		std::cout << "Something wrong with ArchiveFileInfo\n";
+		std::exit( -1 );
+	}
+	
+	//TODO: Check checksum setting
+	if( !file_info.checksum_set ){
+		std::cout << "Missing checksum for file\n";
+		std::exit( -1 );
+	}
+	
 	ArchiveFile f;
-	f.name = name;
-	f.folder_id = folders.addFolderPath( dir );
-	f.size = size;
-	f.compressed_size = compressed_size;
-	f.checksum = checksum;
+	f.name = file_info.name;
+	f.folder_id = folders.addFolderPath( file_info.dir );
+	f.size = file_info.size;
+	f.compressed_size = file_info.compressed_size;
+	f.checksum = file_info.checksum;
+	f.compressor = file_info.compressor;
 	files.push_back( f );
 }
 
@@ -97,7 +123,7 @@ Archive ArchiveConstructor::createHeader(){
 		f.filesize = file.size;
 		f.compressed_size = file.compressed_size;
 		f.folder = file.folder_id;
-		f.format = 1; //TODO:
+		f.format = uint8_t(file.compressor);
 		f.flags  = 0; //TODO:
 		f.user   = 0; //TODO:
 		arc.files.push_back( f );

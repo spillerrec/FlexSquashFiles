@@ -14,6 +14,13 @@ namespace FxSF{
 constexpr uint8_t CUSTOM_CODEC_OFFSET = 128;
 constexpr uint8_t STREAM_PREV_CODEC = 1;
 
+enum class Compressor{
+		NONE    = 0
+	,	ZSTD    = 1
+	,	DEFLATE = 2
+	,	LZMA    = 3
+};
+
 struct File{
 	uint64_t offset;
 	uint64_t filesize;
@@ -39,9 +46,9 @@ struct File{
 	}
 	
 	bool streamCompression() const{ return flags & STREAM_PREV_CODEC; }
-	bool customCodec()       const{ return format >= CUSTOM_CODEC_OFFSET; }
-	bool getFormat()         const{ return format; }
-	bool getCustomFormat()   const{ return format - CUSTOM_CODEC_OFFSET; }
+	bool isCustomCodec()       const{ return format >= CUSTOM_CODEC_OFFSET; }
+	uint8_t getFormat()         const{ return format; }
+	uint8_t getCustomFormat()   const{ return format - CUSTOM_CODEC_OFFSET; }
 	
 	
 };

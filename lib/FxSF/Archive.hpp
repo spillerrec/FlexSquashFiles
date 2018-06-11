@@ -47,7 +47,7 @@ struct File{
 	
 	bool streamCompression() const{ return flags & STREAM_PREV_CODEC; }
 	bool isCustomCodec()       const{ return format >= CUSTOM_CODEC_OFFSET; }
-	uint8_t getFormat()         const{ return format; }
+	Compressor getFormat()      const{ return Compressor(format); }
 	uint8_t getCustomFormat()   const{ return format - CUSTOM_CODEC_OFFSET; }
 	
 	
@@ -110,6 +110,9 @@ class Archive{
 				auto folder() const{ return file().folder; }
 				
 				auto checksum() const{ return arc->checksums[id]; }
+				auto isCustomCodec() const{ return file().isCustomCodec(); }
+				auto getFormat() const{ return file().getFormat(); }
+				auto getCustomFormat() const{ return file().getCustomFormat(); }
 				
 				bool operator!=(const Iterator& other) const
 					{ return arc != other.arc || id != other.id; }

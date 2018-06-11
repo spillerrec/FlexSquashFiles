@@ -134,7 +134,24 @@ bool extract( QString archive_path, QString output_path, bool autodir ){
 		}
 		
 		//Decompress
-		auto data = zstd::decompress( buffer.get(), size );
+		if( file.isCustomCodec() ){
+			std::cout << "Using custom codec, bailing...\n";
+			return false; //TODO: Allow extracting the file
+		}
+		
+		//Decode data
+		std::pair<std::unique_ptr<char[]>, uint64_t> data;
+		switch( file.getFormat() ){
+			case FxSF::Compressor::NONE:
+					data = std::make_pair( std::move( buffer ), size );
+				break;
+			case FxSF::Compressor::ZSTD:
+					data = std::move( zstd::decompress( buffer.get(), size ) );
+				break;
+			default:
+				std::cout << "Not yet implemented codec\n";
+				return false;
+		}
 		
 		//Construct paths and dirs
 		auto folder = output_path + extra_path + folderPath(in, file.folder());

@@ -4,7 +4,7 @@
 #ifndef QT_FILE_UTILS_HPP
 #define QT_FILE_UTILS_HPP
 
-#include "lib/FxSF/Archive.hpp"
+#include <FxSF/Archive.hpp>
 
 #include <QDir>
 #include <QFile>

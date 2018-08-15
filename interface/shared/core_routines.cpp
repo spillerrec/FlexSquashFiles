@@ -5,10 +5,10 @@
 
 #include "qt_file_utils.hpp"
 
-#include "lib/FxSF/Archive.hpp"
-#include "lib/FxSF/ArchiveConstructor.hpp"
-#include "lib/FxSF/checksum.hpp"
-#include "lib/FxSF/zstd++.hpp"
+#include <FxSF/Archive.hpp>
+#include <FxSF/ArchiveConstructor.hpp>
+#include <FxSF/checksum.hpp>
+#include <FxSF/zstd++.hpp>
 
 #include <QString>
 #include <QDir>

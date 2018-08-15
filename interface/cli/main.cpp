@@ -1,8 +1,8 @@
 /*	This file is part of FxSF, which is free software and is licensed
  * under the terms of the GNU GPL v3.0. (see http://www.gnu.org/licenses/ ) */
 
-#include "core_routines.hpp"
-#include "qt_file_utils.hpp"
+#include "../shared/core_routines.hpp"
+#include "../shared/qt_file_utils.hpp"
 
 #include <cxxopts.hpp>
 

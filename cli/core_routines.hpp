@@ -8,8 +8,18 @@
 class QString;
 class File;
 
-int compress( std::vector<File> files, QString outpath, bool autodir );
+struct CompressSettings{
+	bool autodir{ false };
+	double max_size { 0.95 }; //Maximum compressed size before using no compression
+};
+
+struct ExtractSettings{
+	bool autodir{ false };
+	bool ignore_errors{ false };
+};
+
+int compress( std::vector<File> files, QString outpath, CompressSettings settings={} );
 void list_archive( QString path );
-bool extract( QString archive_path, QString output_path, bool autodir );
+bool extract( QString archive_path, QString output_path, ExtractSettings settings={} );
 
 #endif

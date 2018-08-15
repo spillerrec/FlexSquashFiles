@@ -32,10 +32,12 @@ static QString relativeTo( QDir parent, QFileInfo child, QString root="" ){
 	return relative;
 }
 
+//Convert from UTF-8 FxSF string to QString
 static QString fromFxsfString( FxSF::String s )
 	{ return QString( s.start ); }
 	
 static QString folderPath( const FxSF::Archive& arc, unsigned id ){
+	//Recursively construct the complete folder path
 	auto parent = arc.folderParent(id);
 	auto current = fromFxsfString(arc.folderName(id));
 	if(id == parent)
@@ -43,7 +45,7 @@ static QString folderPath( const FxSF::Archive& arc, unsigned id ){
 	return folderPath( arc, parent ) + "/" + current;
 }
 
-int compress( std::vector<File> files, QString outpath, bool autodir ){
+int compress( std::vector<File> files, QString outpath, CompressSettings settings ){
 	//TODO: Fail if no files
 	//TODO: Add everything into a folder called <outpath> if --autodir specified
 	QString base_folder = "";
@@ -108,7 +110,7 @@ void list_archive( QString path ){
 }
 
 //TODO: Use exceptions instead?
-bool extract( QString archive_path, QString output_path, bool autodir ){
+bool extract( QString archive_path, QString output_path, ExtractSettings settings ){
 	//Read archive
 	QtReader reader( archive_path );
 	FxSF::Archive in( reader );
@@ -130,7 +132,10 @@ bool extract( QString archive_path, QString output_path, bool autodir ){
 		//Read data
 		if( !reader.read( buffer.get(), size ) ){
 			std::cout << "File read failed\n";
-			return false;
+			if( settings.ignore_errors )
+				continue;
+			else
+				return false;
 		}
 		
 		//Decompress
@@ -150,7 +155,10 @@ bool extract( QString archive_path, QString output_path, bool autodir ){
 				break;
 			default:
 				std::cout << "Not yet implemented codec\n";
-				return false;
+				if( settings.ignore_errors )
+					continue;
+				else
+					return false;
 		}
 		
 		//Construct paths and dirs
@@ -163,14 +171,20 @@ bool extract( QString archive_path, QString output_path, bool autodir ){
 		if( checksum != file.checksum() ){
 			std::cout << "Checksum failed for " << filename.toLocal8Bit().constData() << ": " << checksum << " vs. " << file.checksum() << '\n';
 			//TODO: Checksum formatting
-			return false; //TODO: ignore errors
+			if( settings.ignore_errors )
+				continue;
+			else
+				return false;
 		}
 		
 		//Write data to resulting file
 		QFile out_file( folder + "/" + filename );
 		if( !out_file.open( QIODevice::WriteOnly ) ){
 			std::cout << "Couldn't open output file: " << filename.toLocal8Bit().constData() << '\n';
-			return false;
+			if( settings.ignore_errors )
+				continue;
+			else
+				return false;
 		}
 		out_file.write( data.first.get(), data.second );
 	}

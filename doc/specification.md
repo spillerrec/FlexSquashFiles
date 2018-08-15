@@ -20,7 +20,7 @@ HeaderHeader
 If `Custom magic` contains anything else than `"\0\0\0\0"` then the format is a custom extension.
 Applications not recognizing this string are not allowed to modify the file without removing any custom features and should obviously warn the user in the progress. (Expert tools may allow modifications specified by the user.)
 
-If `Header size` is `0`, then the archive is empty and it should not attempt to parse the header segment.
+`Header size` is the total size of the header before data begins to appear. Decoders should always use if later versions use a bigger header. If `Header size` is `0`, then the archive is empty and it should not attempt to parse the header segment.
 
 **TODO:** Reserve the two highest bytes of `Main header size` to select compression method? `0` would be ZSTD so we don't have to worry about it for now. Or we could use `0` for `Main header size` to indicate compression when it has a header (`Header size` is non-zero).
 
@@ -34,12 +34,13 @@ Header
 ------
 The header is ZSTD compressed with dictionary compression.
 
-| Field       | Compression | Optional | Desccription                        |
-| ----------- | ----------- | -------- | ----------------------------------- |
-| Main header | Yes         | No       | Contain file and folder information |
-| Text        | Yes         | No       | Contains all text strings           |
-| Checksums   | No          | Yes      | CRC32 for verification              |
-| User-data   | N/A         | Yes      | Area for extensions                 |
+| Field        | Compression | Optional | Desccription                        |
+| ------------ | ----------- | -------- | ----------------------------------- |
+| Main header  | Yes         | No       | Contain file and folder information |
+| Text         | Yes         | No       | Contains all text strings           |
+| Checksums    | No          | Yes      | CRC32 for verification              |
+| Dictionaries | N/A         | Yes      | Dictionaries for shared compression |
+| User-data    | N/A         | Yes      | Area for extensions                 |
 
 The main header and text segments are individually ZSTD compressed each with global dictionaries which are stored in the decoder. The ZSTD frames must contain the decompressed sizes. The compressed size of `Main header` (used for decompressing) is defined in the `HeaderHeader`, the compressed size of the `Text` segment is specified in the `Main header`.
 
@@ -68,21 +69,27 @@ The decompressed data contains the following:
 
 **Decoding info**
 
-| Field        | Type   | Notes                                 |
-| ------------ | ------ | ------------------------------------- |
-| FxSF version | uint8  | Currently 0 (unstable)                |
-| User version | uint8  | Custom extension version, 0 if not    |
-| Flags        | uint16 | Decoding flags, see below             |
-| File count   | uint32 | The amount of files                   |
-| Folder count | uint32 | The amount of folders                 |
-| Text size    | uint32 | The size of the text segment in bytes |
+| Field            | Type   | Notes                                 |
+| ---------------- | ------ | ------------------------------------- |
+| FxSF version     | uint8  | Currently 0 (unstable)                |
+| User version     | uint8  | Custom extension version, 0 if not    |
+| Main header size | uint8  | Size of header in multipes of 4       |
+| Flags            | uint8  | Decoding flags, see below             |
+| File count       | uint32 | The amount of files                   |
+| Folder count     | uint32 | The amount of folders                 |
+| Text size        | uint32 | The size of the text segment in bytes |
+
+*Main header size:*
+
+For forward compability, this is the size of this header times 4 bytes. This is currently always `4`, i.e. `16 bytes`.
 
 *Decoding flags:*
 
-| Bit  | Description        |
-| ---- | ------------------ |
-| 0    | Checksums disabled |
-| 1-15 | Reserved, always 0 |
+| Bit  | Description                     |
+| ---- | ------------------------------- |
+| 0    | Checksums disabled (if `1`)     |
+| 1    | Dictionaries available (if `1`) |
+| 2-7  | Reserved, always `0`            |
 
 **File header**
 Next follows `File count` file headers. The order is used to coorelate it with the text strings.

@@ -61,22 +61,30 @@ int main(int argc, const char* argv[]){
 		
 		//Compressing
 		if( result.count( "compress" ) ){
+			//Get parameters
 			auto files = allFiles( args );
+			CompressSettings settings;
+			settings.autodir = autodir;
+			//TODO: max size
 			
 			//TODO: Default output path when not specified
 			auto outpath = getQString( "outpath" );
 			
-			if( !compress( files, outpath, autodir ) )
+			if( !compress( files, outpath, settings ) )
 				return -1;
 		}
 		
 		//Extracting
 		if( result.count( "extract" ) ){
+			ExtractSettings settings;
+			settings.autodir = autodir;
+			//TODO: ignore errors
+			
 			for( auto arg : args ){
 				//TODO: Default output path when not specified
 				auto outpath = getQString( "outpath" );
 				
-				if( !extract( arg, outpath, autodir ) )
+				if( !extract( arg, outpath, settings ) && !settings.ignore_errors )
 					return -1;
 			}
 		}

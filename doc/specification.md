@@ -105,23 +105,28 @@ Next follows `File count` file headers. The order is used to coorelate it with t
 | reserved        | uint16 | Reserved for future versions, must be 0  |
 | user-data       | uint64 | Room for custom extensions               |
 
-The `Offset` is the amount of bytes from the start of the data section to where the file data is stored, using `Compressed size` amount of bytes. Files may be placed anywhere in the data section, in any order. Areas in the data section not covered by any files must be zero. (**Rationale:** Force a consistent handling of undefined areas, and many file systems support zero block optimization.)
+The `Offset` is the amount of bytes from the start of the data section to where the file data is stored, using `Compressed size` amount of bytes. Files may be placed anywhere in the data section, in any order. Areas in the data section not covered by any files must be zero. (**Rationale:** Force a consistent handling of undefined areas, as many file systems support zero block optimization.)
 
 The file header is slightly processed in order to compress better. The `File size` have been substracted with the `Compressed size`. The `Offset` have been substracted with the ending of the previous file, i.e. `offset - (prev.offset + prev.compressed_size)`.
 The application must support proper wrap-around in case `Offset` or `Filesize` becomes negative, though an implementation should always switch to `None` compression in case the selected method increases the filesize.
 
 Compression defines the compression method based on the following ids:
 
-| ID   | Method  | Notes                             |
-| ---- | ------- | --------------------------------- |
-| 0    | None    | File is stored uncompressed       |
-| 1    | ZSTD    | File is compressed with Zstandard |
-| 2    | Deflate |                                   |
-| 3    | LZMA    |                                   |
+| ID     | Method       | Notes                               |
+| ------ | ------------ | ----------------------------------- |
+| 0      | None         | File is stored uncompressed         |
+| 1      | ZSTD         | File is compressed with Zstandard   |
+| 2      | LZMA         |                                     |
+| 3      | LZ4          |                                     |
+| 4-15   | Reserved     | Do not use                          |
+| 16-31  | User defined | Defined by a custom extension       |
+| 32-255 | Dictionary   | Compressed using dictionary `ID-32` |
 
-The range `128-255` can be used by custom extensions to define their own compression methods.
+The first 16 `ID`s are required to be implemented by a decoder to be compliant with the specification. The compression routines may however be loaded dynamically as optional dependencies, provided a proper help text is provided. An encoder is only required to support `none` and  `ZSTD` however.
 
-TODO: Support dictionary compression?
+`ID`s `16` to `31` can be arbritary compression schemes defined by a custom extension, and thus is only allowed to be specified for custom extensions.
+
+The remaining 224 IDs are used for compression with custom dictionaries.
 
 | Bit  | Description                 |
 | ---- | --------------------------- |
@@ -129,7 +134,7 @@ TODO: Support dictionary compression?
 | 1-7  | Reserved                    |
 
 To compress several small files efficiently, multiple files may be stored in a single compressed stream. In this case, the first file in the stream has the flag set and the `Compressed size` is the size of the entire compressed stream. The later files with the flag set have a `Compressed size` of zero with the same `Offset` as the first file, and the last file included in that compressed stream will have the flag unset.
-TODO: Should we even support this? It complicates decoding quite a bit and the whole point of this format is to allow quick access to arbitrary files, using big compressed chunks defeats this. Perhaps we can get decent results by creating dictionaries?
+**TODO**: Should we even support this? It complicates decoding quite a bit and the whole point of this format is to allow quick access to arbitrary files, using big compressed chunks defeats this. Perhaps we can get decent results by creating dictionaries?
 
 
 `reserved` must be zero.
@@ -144,7 +149,7 @@ TODO: Should we even support this? It complicates decoding quite a bit and the w
 
 The root folder is identified by its parent folder being itself. To improve compression the most referred folder should have the ID `0`. Order specifies the folder ID.
 
-TODO: Check how much this matter in reality. Might go for an order which is more efficient to process.
+**TODO:** Check how much this matter in reality. Might go for an order which is more efficient to process.
 
 **Text length**
 
@@ -152,7 +157,7 @@ TODO: Check how much this matter in reality. Might go for an order which is more
 | ------ | ------ | ------------------------------------- |
 | Length | uint16 | Amount of bytes including ending "\0" |
 
-TODO: Forced text encoding to UTF-8 even for custom extensions?
+**TODO:** Forced text encoding to UTF-8 even for custom extensions?
 
 Text
 ----
@@ -165,6 +170,43 @@ Checksums
 If `Checksums disabled` is false, this segment contains `Files count` CRC32 checksums (uint32) without any compression applied.
 
 The option of disabling checksums is mainly there for custom extensions or use-cases which have some other way of verifying the integrity of the archive. Consider for example a package system which saves a checksum for each package in its repository.
+
+## Dictionaries
+
+| **Field**    | **Type**                   | **Descriptionn**                                    |
+| ------------ | -------------------------- | --------------------------------------------------- |
+| dict_count   | uint32_t                   | Amount of dictionaries                              |
+| headers      | array of Dictionary header | `dict_count` dictionary headers                     |
+| dictionaries | raw data                   | `dict_count` data blocks containing each dictionary |
+
+**Dictionary header**
+
+| **Field**          | **Type** | **Description**                   |
+| ------------------ | -------- | --------------------------------- |
+| Data Size          | uint32_t | How large the raw data is         |
+| Compression method | uint8_t  | What compression scheme is in use |
+| Reserved           | uint8_t  | Reserved                          |
+| User data          | uint16_t | Compresion method specific data   |
+
+`Compression method` is defined the same as the file header. It is obviously not allowed to be in the dictionary range.
+
+Currently no flags are used and this must be `0`.
+
+`User data` is specific to a compression scheme and can hold additional setting if needed. If not used, this shall be `0`. In case 2 bytes is not enough, those settings should be embedded in the data section.
+
+**Dictionary data**
+
+**TODO:** Again, should the data buffers be aligned?
+
+Each block must be next to each other.
+
+## Dictionary types
+
+Currently dictionaries are only defined for Zstandard
+
+**ZSTD**
+
+The data section contains the ZSTD dictionary as defined by ZSTD, but is additionally compressed with ZSTD. `User Data` is currently not used.
 
 User-data
 ---------
